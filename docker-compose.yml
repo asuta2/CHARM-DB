@@ -1,0 +1,54 @@
+name: charm-db
+
+services:
+  target-postgres:
+    image: postgres@sha256:5773fe724c49c42a7a9ca70202e11e1dff21fb7235b335a73f39297d200b73a2
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${CHARMDB_TARGET_DB:-charm_target}
+      POSTGRES_USER: ${CHARMDB_TARGET_USER:-charm_target}
+      POSTGRES_PASSWORD: ${CHARMDB_TARGET_PASSWORD:?set CHARMDB_TARGET_PASSWORD in .env}
+      POSTGRES_INITDB_ARGS: --data-checksums
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+      - -c
+      - track_io_timing=on
+      - -c
+      - track_wal_io_timing=on
+      - -c
+      - compute_query_id=on
+    ports:
+      - "127.0.0.1:${CHARMDB_TARGET_PORT:-55432}:5432"
+    volumes:
+      - charm_target_data:/var/lib/postgresql
+      - ./infra/target-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${CHARMDB_TARGET_USER:-charm_target} -d ${CHARMDB_TARGET_DB:-charm_target}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    cpus: 4.0
+    mem_limit: 4g
+    mem_reservation: 2g
+    shm_size: 1g
+    pids_limit: 512
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: local
+      options:
+        max-size: 20m
+        max-file: "5"
+    networks:
+      - target
+
+volumes:
+  charm_target_data:
+    name: charm_target_data
+
+networks:
+  target:
+    name: charm_target_network

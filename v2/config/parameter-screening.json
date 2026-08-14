@@ -2,7 +2,7 @@
   "protocol_id": "thesis-protocol-v2",
   "schema_version": 1,
   "stage": "parameter-screening",
-  "status": "draft",
+  "status": "blocked",
   "evidence_role": "CALIBRATION",
   "operator_triggered": true,
   "artifact_root": "artifacts-newpc/v2/parameter-screening",
@@ -10,15 +10,67 @@
   "prerequisites": {
     "benchmark_profile_frozen": true,
     "default_reference_passed": true,
-    "screening_seed_preregistered": false
+    "screening_seed_preregistered": true,
+    "durable_runner_implemented": false
   },
+  "execution_ready": false,
   "benchmark_profile_id": "scale500-c32-w600-f3-600-v1",
   "design": {
+    "screening_seed": 1783446633,
+    "seed_derivation": {
+      "algorithm": "sha256-first-32-bits-mod-2147483647",
+      "label": "thesis-protocol-v2/parameter-screening/design/1"
+    },
+    "parameter_order": [
+      "shared_buffers",
+      "effective_cache_size",
+      "work_mem",
+      "maintenance_work_mem",
+      "checkpoint_timeout",
+      "checkpoint_completion_target",
+      "max_wal_size",
+      "random_page_cost",
+      "effective_io_concurrency",
+      "default_statistics_target",
+      "max_parallel_workers_per_gather"
+    ],
+    "generator": {
+      "implementation": "torch.quasirandom.SobolEngine",
+      "verified_torch_version": "2.13.0+cpu",
+      "scramble": true,
+      "draw_dtype": "float64",
+      "integer_decode": "lower+floor(u*(upper-lower+1)), clamped to upper",
+      "continuous_decimal_places": 6
+    },
     "joint_sobol_configurations": 32,
     "interleaved_default_controls": 3,
+    "default_control_positions": [1, 18, 35],
+    "sobol_design_sha256": "b533c8eb540f8022e5878784c2b5a224d56d65e5688eb86ae856232cb93757cb",
+    "initial_schedule_sha256": "e4e565cded0d410d6d1206ca6a9a7b4f60f576bfc81f500b07038f288b2afada",
     "maximum_targeted_oat_followups": 6,
+    "targeted_oat": {
+      "paired_endpoint_runs_per_knob": 2,
+      "maximum_knobs": 3,
+      "eligibility": "0.15 <= maximum_absolute_prcc <= 0.25",
+      "priority": "ascending absolute distance from 0.20, then frozen parameter order",
+      "tps_endpoint_range_relative_threshold": 0.05,
+      "p99_endpoint_range_ms_threshold": 5.0
+    },
     "final_dimension_range": [8, 12],
     "required_parameter": "shared_buffers"
+  },
+  "default_configuration": {
+    "shared_buffers": "16384",
+    "effective_cache_size": "524288",
+    "work_mem": "4096",
+    "maintenance_work_mem": "65536",
+    "checkpoint_timeout": "300",
+    "checkpoint_completion_target": "0.9",
+    "max_wal_size": "1024",
+    "random_page_cost": "4",
+    "effective_io_concurrency": "16",
+    "default_statistics_target": "100",
+    "max_parallel_workers_per_gather": "2"
   },
   "search_space": {
     "parameters": {
@@ -35,8 +87,37 @@
       "max_parallel_workers_per_gather": {"type": "integer", "lower": 0, "upper": 4}
     }
   },
+  "analysis_plan": {
+    "valid_sobol_measurements_minimum": 28,
+    "failed_or_invalid_configurations": "retain, do not replace, exclude from PRCC, and block for bound review if fewer than 28 valid Sobol measurements remain",
+    "sensitivity_statistic": "maximum_absolute_prcc",
+    "statistic_definition": "maximum absolute partial rank correlation coefficient across throughput_tps and p99_ms, controlling for the other ten ranked knobs",
+    "responses": ["throughput_tps", "p99_ms"],
+    "controls_excluded_from_sensitivity_fit": true,
+    "inclusion_threshold": 0.20,
+    "ambiguity_band_inclusive": [0.15, 0.25],
+    "selection_rule": "include scores >=0.20; resolve at most three closest ambiguous knobs with paired endpoint OAT; require shared_buffers; if fewer than eight remain, add the highest-scoring operationally safe knobs until eight",
+    "control_drift": {
+      "benchmark_failures_max": 0,
+      "maximum_tps_fitted_block_change_relative": 0.05,
+      "maximum_p99_fitted_block_change_ms": 5.0,
+      "failure_action": "block screening interpretation; do not add observations to average away drift"
+    },
+    "checkpoint_timeout_interpretation": "a weak effect at the frozen 600-second measurement is duration-dependent evidence and may justify exclusion"
+  },
+  "runtime": {
+    "basis": "mean completed trial lifetime from the five D027 default-reference observations under the identical restore and frozen benchmark lifecycle",
+    "basis_observations": 5,
+    "mean_restore_inclusive_seconds_per_observation": 1662.727767,
+    "initial_observations": 35,
+    "maximum_observations": 41,
+    "initial_restore_inclusive_hours": 16.165,
+    "maximum_restore_inclusive_hours": 18.937,
+    "includes_retries_or_operator_gaps": false,
+    "accepted": true,
+    "accepted_by": "D028"
+  },
   "unresolved_decisions": [
-    "pre-register screening seed, sensitivity statistic, and inclusion threshold",
-    "select and document final 8 to 12 knobs"
+    "implement and validate the durable candidate-restored screening runner before execution"
   ]
 }

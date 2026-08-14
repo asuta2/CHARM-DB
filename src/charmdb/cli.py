@@ -111,6 +111,11 @@ from charmdb.v2.saturation_phase2 import (
     phase2_step_dict,
     run_phase2_next,
 )
+from charmdb.v2.screening import (
+    SCREENING_MANIFEST,
+    export_screening_design,
+    screening_design_summary,
+)
 from charmdb.v2.warmup_duration import (
     PILOT_MANIFEST,
     analyze_duration,
@@ -610,6 +615,25 @@ def v2_default_reference_export_command(
             indent=2,
         )
     )
+
+
+@app.command("v2-screening-design-validate")
+def v2_screening_design_validate_command(
+    manifest: Annotated[
+        Path, typer.Option(exists=True, file_okay=True, dir_okay=False, readable=True)
+    ] = SCREENING_MANIFEST,
+) -> None:
+    typer.echo(json.dumps(screening_design_summary(manifest), indent=2))
+
+
+@app.command("v2-screening-design-export")
+def v2_screening_design_export_command(
+    manifest: Annotated[
+        Path, typer.Option(exists=True, file_okay=True, dir_okay=False, readable=True)
+    ] = SCREENING_MANIFEST,
+    output: Annotated[Path | None, typer.Option(file_okay=True, dir_okay=False)] = None,
+) -> None:
+    typer.echo(json.dumps(export_screening_design(manifest, output), indent=2))
 
 
 @app.command("knobs-discover")

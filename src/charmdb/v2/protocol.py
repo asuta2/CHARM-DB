@@ -105,6 +105,50 @@ def _validate_primary(payload: dict[str, Any], status: str) -> None:
             raise ValueError(f"PRIMARY manifest cannot be ready before gates pass: {failed}")
 
 
+def _validate_screening(payload: dict[str, Any], role: str, status: str) -> None:
+    if role != "CALIBRATION":
+        raise ValueError("parameter screening must use the CALIBRATION evidence role")
+    prerequisites = _require_mapping(payload.get("prerequisites"), "prerequisites")
+    for gate in ("benchmark_profile_frozen", "default_reference_passed"):
+        if prerequisites.get(gate) is not True:
+            raise ValueError(f"parameter screening requires passed prerequisite {gate}")
+    design = _require_mapping(payload.get("design"), "design")
+    expected = {
+        "joint_sobol_configurations": 32,
+        "interleaved_default_controls": 3,
+        "maximum_targeted_oat_followups": 6,
+        "final_dimension_range": [8, 12],
+        "required_parameter": "shared_buffers",
+    }
+    mismatches = {
+        key: {"expected": value, "observed": design.get(key)}
+        for key, value in expected.items()
+        if design.get(key) != value
+    }
+    if mismatches:
+        raise ValueError(f"parameter-screening design differs from v2: {mismatches}")
+    seed = design.get("screening_seed")
+    if not isinstance(seed, int) or isinstance(seed, bool) or seed <= 0:
+        raise ValueError("parameter screening requires a positive integer seed")
+    if design.get("default_control_positions") != [1, 18, 35]:
+        raise ValueError("parameter screening controls must be fixed at positions 1, 18, and 35")
+    analysis = _require_mapping(payload.get("analysis_plan"), "analysis_plan")
+    if analysis.get("sensitivity_statistic") != "maximum_absolute_prcc":
+        raise ValueError("parameter screening requires the frozen PRCC statistic")
+    if analysis.get("inclusion_threshold") != 0.20:
+        raise ValueError("parameter screening requires the frozen 0.20 inclusion threshold")
+    runtime = _require_mapping(payload.get("runtime"), "runtime")
+    if runtime.get("accepted") is not True:
+        raise ValueError("parameter-screening runtime must be accepted before design freeze")
+    execution_ready = payload.get("execution_ready")
+    if not isinstance(execution_ready, bool):
+        raise ValueError("parameter screening execution_ready must be Boolean")
+    if status == "ready" and (
+        execution_ready is not True or prerequisites.get("durable_runner_implemented") is not True
+    ):
+        raise ValueError("parameter screening cannot be ready before its durable runner passes")
+
+
 def validate_manifest(payload: dict[str, Any], *, path: Path | None = None) -> ProtocolManifest:
     payload = _require_mapping(payload, "manifest")
     if payload.get("protocol_id") != PROTOCOL_ID:
@@ -134,6 +178,8 @@ def validate_manifest(payload: dict[str, Any], *, path: Path | None = None) -> P
     if status == "ready" and unresolved:
         raise ValueError("ready manifests cannot contain unresolved decisions")
     _validate_search_space(payload)
+    if stage == "parameter-screening":
+        _validate_screening(payload, role, status)
     if role == "PRIMARY":
         _validate_primary(payload, status)
     return ProtocolManifest(

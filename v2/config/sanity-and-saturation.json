@@ -1,0 +1,163 @@
+{
+  "protocol_id": "thesis-protocol-v2",
+  "schema_version": 1,
+  "stage": "sanity-and-saturation",
+  "status": "ready",
+  "evidence_role": "CALIBRATION",
+  "operator_triggered": true,
+  "artifact_root": "artifacts-newpc/v2/sanity-and-saturation",
+  "candidate_restore_gate": "phase-1-exempt",
+  "authorization_scope": "phase_1_and_phase_2",
+  "prerequisites": {
+    "bootstrap_passed": true,
+    "candidate_restore_scale10_pilot_passed": true,
+    "candidate_restore_scale100_comparison_passed": true,
+    "phase_1_saturation_passed": true,
+    "candidate_restore_scale500_comparison_passed": true,
+    "maintenance_policy_frozen": true,
+    "restore_overhead_accepted": true
+  },
+  "phase_1": {
+    "scales": [100, 250, 500],
+    "concurrency": [4, 8, 16, 32, 64],
+    "anchor_configurations": ["postgresql_default", "throughput_leaning", "latency_leaning"],
+    "anchor_values": {
+      "postgresql_default": {
+        "shared_buffers": "16384",
+        "effective_cache_size": "524288",
+        "work_mem": "4096",
+        "maintenance_work_mem": "65536",
+        "checkpoint_timeout": "300",
+        "checkpoint_completion_target": "0.9",
+        "max_wal_size": "1024",
+        "random_page_cost": "4",
+        "effective_io_concurrency": "16",
+        "default_statistics_target": "100",
+        "max_parallel_workers_per_gather": "2"
+      },
+      "throughput_leaning": {
+        "shared_buffers": "183500",
+        "effective_cache_size": "524288",
+        "work_mem": "16384",
+        "maintenance_work_mem": "262144",
+        "checkpoint_timeout": "900",
+        "checkpoint_completion_target": "0.95",
+        "max_wal_size": "4096",
+        "random_page_cost": "1.1",
+        "effective_io_concurrency": "200",
+        "default_statistics_target": "200",
+        "max_parallel_workers_per_gather": "4"
+      },
+      "latency_leaning": {
+        "shared_buffers": "65536",
+        "effective_cache_size": "262144",
+        "work_mem": "8192",
+        "maintenance_work_mem": "131072",
+        "checkpoint_timeout": "300",
+        "checkpoint_completion_target": "0.95",
+        "max_wal_size": "2048",
+        "random_page_cost": "2",
+        "effective_io_concurrency": "64",
+        "default_statistics_target": "500",
+        "max_parallel_workers_per_gather": "0"
+      }
+    },
+    "warmup_seconds": 60,
+    "measurement_seconds": 120,
+    "client_thread_cap": 4,
+    "candidate_restore_exception": "one deterministic reseed per scale/configuration ladder",
+    "interpretation_rules": {
+      "knee_tps_gain_max_fraction": 0.10,
+      "knee_p99_growth_min_fraction": 0.20,
+      "client_capacity_warning_fraction": 0.85,
+      "server_capacity_not_saturated_fraction": 0.85,
+      "client_bottleneck_action": "pause before further interpretation and rerun affected design with a preregistered higher thread cap"
+    }
+  },
+  "phase_2": {
+    "status": "passed",
+    "candidate_restore_gate": "required",
+    "selected_restore_mechanism": "logical-restore",
+    "candidate_restore_baseline_id": "35459275-c9bf-544f-be54-4e3537464c78",
+    "candidate_restore_median_seconds": 197.834,
+    "restore_overhead_accepted": true,
+    "restore_overhead_accepted_at": "2026-08-01",
+    "selected_scale": 500,
+    "selected_concurrency": 32,
+    "client_threads": 4,
+    "pgbench_maintenance_policy": "canonical-baseline-only-no-vacuum",
+    "pgbench_maintenance_arguments": ["--no-vacuum"],
+    "canonical_baseline_maintenance": "VACUUM (FREEZE, ANALYZE) followed by CHECKPOINT before snapshot approval",
+    "selection_evidence": {
+      "phase_1_campaign_id": "ee07e8b6-b499-4b9f-92fd-5a0eb6bc4480",
+      "completed_probes": 45,
+      "client_bottleneck_suspected": false,
+      "nondominated_anchor_count_at_knee": 3
+    },
+    "representative_configuration_count": 8,
+    "configuration_design": "fixed piecewise-linear interpolation from the default anchor toward the throughput and latency anchors; integer settings use explicit pre-registered rounded values",
+    "representative_configurations": [
+      {
+        "name": "postgresql_default",
+        "values": {"shared_buffers": "16384", "effective_cache_size": "524288", "work_mem": "4096", "maintenance_work_mem": "65536", "checkpoint_timeout": "300", "checkpoint_completion_target": "0.9", "max_wal_size": "1024", "random_page_cost": "4", "effective_io_concurrency": "16", "default_statistics_target": "100", "max_parallel_workers_per_gather": "2"}
+      },
+      {
+        "name": "default_to_throughput_25",
+        "values": {"shared_buffers": "58163", "effective_cache_size": "524288", "work_mem": "7168", "maintenance_work_mem": "114688", "checkpoint_timeout": "450", "checkpoint_completion_target": "0.9125", "max_wal_size": "1792", "random_page_cost": "3.275", "effective_io_concurrency": "62", "default_statistics_target": "125", "max_parallel_workers_per_gather": "3"}
+      },
+      {
+        "name": "default_to_throughput_50",
+        "values": {"shared_buffers": "99942", "effective_cache_size": "524288", "work_mem": "10240", "maintenance_work_mem": "163840", "checkpoint_timeout": "600", "checkpoint_completion_target": "0.925", "max_wal_size": "2560", "random_page_cost": "2.55", "effective_io_concurrency": "108", "default_statistics_target": "150", "max_parallel_workers_per_gather": "3"}
+      },
+      {
+        "name": "default_to_throughput_75",
+        "values": {"shared_buffers": "141721", "effective_cache_size": "524288", "work_mem": "13312", "maintenance_work_mem": "212992", "checkpoint_timeout": "750", "checkpoint_completion_target": "0.9375", "max_wal_size": "3328", "random_page_cost": "1.825", "effective_io_concurrency": "154", "default_statistics_target": "175", "max_parallel_workers_per_gather": "4"}
+      },
+      {
+        "name": "throughput_leaning",
+        "values": {"shared_buffers": "183500", "effective_cache_size": "524288", "work_mem": "16384", "maintenance_work_mem": "262144", "checkpoint_timeout": "900", "checkpoint_completion_target": "0.95", "max_wal_size": "4096", "random_page_cost": "1.1", "effective_io_concurrency": "200", "default_statistics_target": "200", "max_parallel_workers_per_gather": "4"}
+      },
+      {
+        "name": "default_to_latency_25",
+        "values": {"shared_buffers": "28672", "effective_cache_size": "458752", "work_mem": "5120", "maintenance_work_mem": "81920", "checkpoint_timeout": "300", "checkpoint_completion_target": "0.9125", "max_wal_size": "1280", "random_page_cost": "3.5", "effective_io_concurrency": "28", "default_statistics_target": "200", "max_parallel_workers_per_gather": "2"}
+      },
+      {
+        "name": "default_to_latency_50",
+        "values": {"shared_buffers": "40960", "effective_cache_size": "393216", "work_mem": "6144", "maintenance_work_mem": "98304", "checkpoint_timeout": "300", "checkpoint_completion_target": "0.925", "max_wal_size": "1536", "random_page_cost": "3", "effective_io_concurrency": "40", "default_statistics_target": "300", "max_parallel_workers_per_gather": "1"}
+      },
+      {
+        "name": "latency_leaning",
+        "values": {"shared_buffers": "65536", "effective_cache_size": "262144", "work_mem": "8192", "maintenance_work_mem": "131072", "checkpoint_timeout": "300", "checkpoint_completion_target": "0.95", "max_wal_size": "2048", "random_page_cost": "2", "effective_io_concurrency": "64", "default_statistics_target": "500", "max_parallel_workers_per_gather": "0"}
+      }
+    ],
+    "blockers": [],
+    "warmup_seconds": 120,
+    "measurement_seconds": 600,
+    "restore_inclusive_lower_bound_hours": 2.04,
+    "minimum_nondominated_points": 3,
+    "execution_evidence": {
+      "campaign_id": "9f8c1124-137d-4d65-9545-2b445b3cc3fc",
+      "completed_configurations": 8,
+      "failed_configurations": 0,
+      "nondominated_count": 5,
+      "passed": true,
+      "first_started_at": "2026-08-01T20:07:48.709231+02:00",
+      "last_completed_at": "2026-08-01T22:46:40.442096+02:00",
+      "elapsed_seconds": 9531.733,
+      "summed_trial_seconds": 9325.422,
+      "restore_seconds": {
+        "total": 3344.356,
+        "mean": 418.044,
+        "median": 454.322,
+        "minimum": 198.653,
+        "maximum": 504.509
+      }
+    }
+  },
+  "decision_outputs": [
+    "select final workload scale and concurrency",
+    "confirm pgbench client is not the bottleneck",
+    "demonstrate stable TPS/p99 tradeoff"
+  ],
+  "unresolved_decisions": []
+}

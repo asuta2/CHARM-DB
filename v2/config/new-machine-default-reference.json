@@ -1,0 +1,69 @@
+{
+  "protocol_id": "thesis-protocol-v2",
+  "schema_version": 1,
+  "stage": "new-machine-default-reference",
+  "status": "draft",
+  "evidence_role": "CALIBRATION",
+  "operator_triggered": true,
+  "artifact_root": "artifacts-newpc/v2/default-reference",
+  "candidate_restore_gate": "required",
+  "prerequisites": {
+    "benchmark_profile_frozen": true,
+    "candidate_restore_policy_frozen": true
+  },
+  "benchmark_profile": {
+    "id": "scale500-c32-w600-f3-600-v1",
+    "documentation": "v2/docs/frozen-benchmark-profile.md",
+    "warmup_seconds": 600,
+    "measurement_seconds": 600,
+    "concurrency": 32,
+    "client_threads": 4,
+    "restore_mechanism": "logical-restore",
+    "pgbench_maintenance_policy": "canonical-baseline-only-no-vacuum"
+  },
+  "evaluation_role": "DEFAULT_CONTROL",
+  "reference_method": "postgresql_default",
+  "initial_observations": 5,
+  "primary_seed_derivation": {
+    "algorithm": "sha256-first-32-bits-mod-2147483647",
+    "labels": "thesis-protocol-v2/default-reference/primary/{1..5}",
+    "excluded_development_seed": 20260731
+  },
+  "primary_seeds": [88408573, 1418705027, 642754166, 1902413987, 740267717],
+  "contingency": {
+    "kind": "one-fixed-extension-block",
+    "trigger": "validity and drift pass, but either precision criterion fails after five observations",
+    "additional_observations": 5,
+    "maximum_total_observations": 10,
+    "no_extension_when": ["validity fails", "drift criterion fails"]
+  },
+  "contingency_seeds": [845196880, 1447054499, 1896818828, 1369360384, 1784014326],
+  "acceptance_criteria": {
+    "confidence_level": 0.95,
+    "maximum_tps_relative_ci_half_width": 0.05,
+    "maximum_p99_ci_half_width_ms": 5.0,
+    "maximum_tps_fitted_block_change_relative": 0.05,
+    "maximum_p99_fitted_block_change_ms": 5.0,
+    "required_valid_observations": 5,
+    "maximum_total_observations": 10,
+    "benchmark_failures_max": 0
+  },
+  "analysis_rules": {
+    "precision": "two-sided 95% Student-t confidence interval around each arithmetic mean",
+    "drift": "absolute fitted first-to-last change from ordinary least-squares slope in chronological execution order",
+    "decision": "pass only when validity, TPS precision, p99 precision, TPS drift, and p99 drift all pass"
+  },
+  "restore_inclusive_runtime": {
+    "projected_minutes_per_observation": 27.728,
+    "initial_block_lower_bound_hours": 2.311,
+    "maximum_with_contingency_hours": 4.621
+  },
+  "restore_inclusive_runtime_accepted": false,
+  "future_gates": [
+    "pass the five-observation launch-condition block or its fixed contingency",
+    "do not start parameter screening before this block passes"
+  ],
+  "unresolved_decisions": [
+    "accept the 2.311-hour initial restore-inclusive runtime and up to 4.621 hours if the fixed contingency triggers"
+  ]
+}

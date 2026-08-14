@@ -1,0 +1,42 @@
+{
+  "protocol_id": "thesis-protocol-v2",
+  "schema_version": 1,
+  "stage": "parameter-screening",
+  "status": "draft",
+  "evidence_role": "CALIBRATION",
+  "operator_triggered": true,
+  "artifact_root": "artifacts-newpc/v2/parameter-screening",
+  "candidate_restore_gate": "required",
+  "prerequisites": {
+    "benchmark_profile_frozen": true,
+    "default_reference_passed": false,
+    "screening_seed_preregistered": false
+  },
+  "benchmark_profile_id": "scale500-c32-w600-f3-600-v1",
+  "design": {
+    "joint_sobol_configurations": 32,
+    "interleaved_default_controls": 3,
+    "maximum_targeted_oat_followups": 6,
+    "final_dimension_range": [8, 12],
+    "required_parameter": "shared_buffers"
+  },
+  "search_space": {
+    "parameters": {
+      "shared_buffers": {"type": "integer", "lower": 16384, "upper": 183500},
+      "effective_cache_size": {"type": "integer", "lower": 131072, "upper": 524288},
+      "work_mem": {"type": "integer", "lower": 1024, "upper": 32768},
+      "maintenance_work_mem": {"type": "integer", "lower": 32768, "upper": 524288},
+      "checkpoint_timeout": {"type": "integer", "lower": 300, "upper": 1800},
+      "checkpoint_completion_target": {"type": "continuous", "lower": 0.7, "upper": 0.95},
+      "max_wal_size": {"type": "integer", "lower": 512, "upper": 4096},
+      "random_page_cost": {"type": "continuous", "lower": 1.0, "upper": 4.0},
+      "effective_io_concurrency": {"type": "integer", "lower": 0, "upper": 200},
+      "default_statistics_target": {"type": "integer", "lower": 100, "upper": 500},
+      "max_parallel_workers_per_gather": {"type": "integer", "lower": 0, "upper": 4}
+    }
+  },
+  "unresolved_decisions": [
+    "pre-register screening seed, sensitivity statistic, and inclusion threshold",
+    "select and document final 8 to 12 knobs"
+  ]
+}

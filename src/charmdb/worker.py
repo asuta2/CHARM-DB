@@ -38,13 +38,27 @@ from charmdb.indexing import (
     verify_index_active,
 )
 from charmdb.metrics import capture_snapshot, numeric_difference
-from charmdb.resources import ResourceLimitError, capture_and_validate_resources
+from charmdb.resources import (
+    ResourceLimitError,
+    capture_and_validate_resources,
+    capture_runtime_resource_sample,
+)
+from charmdb.v2.candidate_restore import (
+    candidate_restore_result_dict,
+    ensure_candidate_dataset_restored,
+    verify_trial_candidate_restore,
+)
 from charmdb.workload import (
+    PGBENCH_MAINTENANCE_POLICY,
     MeasurementExecution,
     load_measurement_marker,
     run_pgbench_measurement,
     run_pgbench_warmup,
 )
+
+V2_BENCHMARK_WORKFLOWS = frozenset({"V2_BASELINE_BENCHMARK", "V2_TUNED_BENCHMARK"})
+TUNED_BENCHMARK_WORKFLOWS = frozenset({"TUNED_BENCHMARK", "V2_TUNED_BENCHMARK"})
+SATURATION_PHASE1_WORKFLOW = "V2_SATURATION_PHASE1"
 
 ACTIVE_STATES = frozenset(
     {
@@ -52,6 +66,8 @@ ACTIVE_STATES = frozenset(
         "CAPTURING_WORKLOAD_CONTEXT",
         "VALIDATING_ACTIONS",
         "ESTIMATING_STATIC_RISK",
+        "RESTORING_CANDIDATE_DATASET",
+        "VERIFYING_CANDIDATE_BASELINE",
         "APPLYING_KNOBS",
         "BUILDING_INDEXES",
         "RELOADING_OR_RESTARTING",
@@ -92,6 +108,8 @@ TERMINAL_STATES = frozenset(
         "MEASUREMENT_INVALID",
         "SLO_VIOLATED",
         "RESOURCE_LIMIT_EXCEEDED",
+        "DATASET_RESTORE_FAILED",
+        "BASELINE_FINGERPRINT_FAILED",
         "LOW_FIDELITY_REJECTED",
         "EARLY_STOPPED",
         "CALIBRATION_INVALID",
@@ -153,6 +171,32 @@ TUNED_BENCHMARK_TRANSITIONS.update(
         "RELOADING_OR_RESTARTING": frozenset({"VERIFYING_DATABASE_HEALTH", "RESTART_FAILED"}),
         "PERSISTING_OBSERVATION": frozenset({"SELECTING_NEXT_ACTION", "MEASUREMENT_INVALID"}),
         "SELECTING_NEXT_ACTION": frozenset({"COMPLETED", "ROLLED_BACK"}),
+    }
+)
+
+V2_BENCHMARK_TRANSITIONS = dict(BENCHMARK_TRANSITIONS)
+V2_BENCHMARK_TRANSITIONS.update(
+    {
+        "CREATED": frozenset({"RESTORING_CANDIDATE_DATASET", "CANCELLED"}),
+        "RESTORING_CANDIDATE_DATASET": frozenset(
+            {"VERIFYING_CANDIDATE_BASELINE", "DATASET_RESTORE_FAILED", "CANCELLED"}
+        ),
+        "VERIFYING_CANDIDATE_BASELINE": frozenset(
+            {"CAPTURING_WORKLOAD_CONTEXT", "BASELINE_FINGERPRINT_FAILED", "CANCELLED"}
+        ),
+    }
+)
+
+V2_TUNED_BENCHMARK_TRANSITIONS = dict(TUNED_BENCHMARK_TRANSITIONS)
+V2_TUNED_BENCHMARK_TRANSITIONS.update(
+    {
+        "CREATED": frozenset({"RESTORING_CANDIDATE_DATASET", "CANCELLED"}),
+        "RESTORING_CANDIDATE_DATASET": frozenset(
+            {"VERIFYING_CANDIDATE_BASELINE", "DATASET_RESTORE_FAILED", "CANCELLED"}
+        ),
+        "VERIFYING_CANDIDATE_BASELINE": frozenset(
+            {"CAPTURING_WORKLOAD_CONTEXT", "BASELINE_FINGERPRINT_FAILED", "CANCELLED"}
+        ),
     }
 )
 
@@ -234,6 +278,20 @@ def validate_transition(workflow_kind: str, current: str, target: str) -> None:
         allowed = TUNED_BENCHMARK_TRANSITIONS.get(current, frozenset())
         if target not in allowed:
             raise ValueError(f"invalid TUNED_BENCHMARK transition {current} -> {target}")
+    if workflow_kind == "V2_BASELINE_BENCHMARK":
+        allowed = V2_BENCHMARK_TRANSITIONS.get(current, frozenset())
+        if target not in allowed:
+            raise ValueError(f"invalid V2_BASELINE_BENCHMARK transition {current} -> {target}")
+    if workflow_kind == "V2_TUNED_BENCHMARK":
+        allowed = V2_TUNED_BENCHMARK_TRANSITIONS.get(current, frozenset())
+        if target not in allowed:
+            raise ValueError(f"invalid V2_TUNED_BENCHMARK transition {current} -> {target}")
+    if workflow_kind == SATURATION_PHASE1_WORKFLOW:
+        allowed = BENCHMARK_TRANSITIONS.get(current, frozenset())
+        if target not in allowed:
+            raise ValueError(
+                f"invalid {SATURATION_PHASE1_WORKFLOW} transition {current} -> {target}"
+            )
     if workflow_kind == "INDEX_LIFECYCLE":
         allowed = INDEX_LIFECYCLE_TRANSITIONS.get(current, frozenset())
         if target not in allowed:
@@ -470,6 +528,12 @@ def create_baseline_benchmark_trial(
     fidelity: int = 3,
     p99_slo_ms: float = 20.0,
     max_attempts: int = 3,
+    *,
+    preflight_id: uuid.UUID | None = None,
+    evidence_role: str | None = None,
+    evaluation_role: str | None = None,
+    restore_mechanism: str = "logical-restore",
+    physical_archive_id: uuid.UUID | None = None,
 ) -> uuid.UUID:
     if not idempotency_key.strip():
         raise ValueError("idempotency_key cannot be empty")
@@ -479,6 +543,22 @@ def create_baseline_benchmark_trial(
         raise ValueError("executed benchmark fidelity must be F2, F3, or F4")
     if p99_slo_ms <= 0 or max_attempts < 1:
         raise ValueError("p99 SLO and max_attempts must be positive")
+    is_v2 = preflight_id is not None or evidence_role is not None or evaluation_role is not None
+    if is_v2 and (preflight_id is None or evidence_role is None):
+        raise ValueError("v2 baseline trials require preflight_id and evidence_role")
+    if evidence_role not in {
+        None,
+        "INFRASTRUCTURE",
+        "CALIBRATION",
+        "PRIMARY",
+        "SECONDARY",
+        "F4_CONFIRMATION",
+    }:
+        raise ValueError("invalid evidence role for an executed v2 benchmark")
+    if restore_mechanism not in {"logical-restore", "physical-archive"}:
+        raise ValueError("unsupported v2 candidate restore mechanism")
+    if (restore_mechanism == "physical-archive") != (physical_archive_id is not None):
+        raise ValueError("physical-archive trials require exactly one physical_archive_id")
     metadata = discover_knobs(
         settings,
         {"random_page_cost", "work_mem", "effective_io_concurrency", "shared_buffers"},
@@ -495,11 +575,18 @@ def create_baseline_benchmark_trial(
         "warmup_seconds": warmup_seconds,
         "duration_seconds": duration_seconds,
         "concurrency": concurrency,
+        "pgbench_maintenance_policy": PGBENCH_MAINTENANCE_POLICY,
         "seed": seed,
         "p99_slo_ms": p99_slo_ms,
         "expected_configuration": expected,
         "label": "postgresql-default",
     }
+    if preflight_id is not None:
+        payload["preflight_id"] = str(preflight_id)
+        payload["restore_mechanism"] = restore_mechanism
+        if physical_archive_id is not None:
+            payload["physical_archive_id"] = str(physical_archive_id)
+    workflow_kind = "V2_BASELINE_BENCHMARK" if is_v2 else "BASELINE_BENCHMARK"
     with connect(settings.control_dsn) as conn, conn.cursor() as cur:
         cur.execute(
             "SELECT status,emergency_stop FROM charm_control.campaigns WHERE campaign_id=%s",
@@ -515,8 +602,9 @@ def create_baseline_benchmark_trial(
         cur.execute(
             """INSERT INTO charm_control.trials
             (trial_id,campaign_id,state,benchmark_profile,fidelity,random_seed,
-             requested_configuration,workflow_kind,workflow_payload,max_attempts,idempotency_key)
-            VALUES (%s,%s,'CREATED',%s,%s,%s,'{}'::jsonb,'BASELINE_BENCHMARK',%s,%s,%s)
+             requested_configuration,workflow_kind,workflow_payload,max_attempts,idempotency_key,
+             protocol_id,evidence_role,evaluation_role,candidate_restore_required)
+            VALUES (%s,%s,'CREATED',%s,%s,%s,'{}'::jsonb,%s,%s,%s,%s,%s,%s,%s,%s)
             ON CONFLICT (campaign_id,idempotency_key) WHERE idempotency_key IS NOT NULL
             DO NOTHING RETURNING trial_id""",
             (
@@ -525,9 +613,14 @@ def create_baseline_benchmark_trial(
                 profile,
                 fidelity,
                 seed,
+                workflow_kind,
                 Jsonb(payload),
                 max_attempts,
                 idempotency_key,
+                "thesis-protocol-v2" if is_v2 else None,
+                evidence_role,
+                evaluation_role,
+                is_v2,
             ),
         )
         inserted = cur.fetchone()
@@ -545,11 +638,60 @@ def create_baseline_benchmark_trial(
         cur.execute(
             """INSERT INTO charm_control.trial_transitions
             (trial_id,from_state,to_state,reason,details)
-            VALUES (%s,NULL,'CREATED','durable baseline benchmark created',%s)""",
-            (trial_id, Jsonb({"idempotency_key": idempotency_key, "profile": profile})),
+            VALUES (%s,NULL,'CREATED',%s,%s)""",
+            (
+                trial_id,
+                "protocol-v2 baseline benchmark created"
+                if is_v2
+                else "durable baseline benchmark created",
+                Jsonb(
+                    {
+                        "idempotency_key": idempotency_key,
+                        "profile": profile,
+                        "preflight_id": str(preflight_id) if preflight_id else None,
+                        "evidence_role": evidence_role,
+                    }
+                ),
+            ),
         )
         conn.commit()
     return trial_id
+
+
+def create_v2_baseline_benchmark_trial(
+    settings: Settings,
+    campaign_id: uuid.UUID,
+    preflight_id: uuid.UUID,
+    evidence_role: str,
+    seed: int,
+    idempotency_key: str,
+    warmup_seconds: int = 2,
+    duration_seconds: int = 5,
+    concurrency: int = 4,
+    fidelity: int = 3,
+    p99_slo_ms: float = 20.0,
+    max_attempts: int = 3,
+    evaluation_role: str = "DEFAULT_CONTROL",
+    restore_mechanism: str = "logical-restore",
+    physical_archive_id: uuid.UUID | None = None,
+) -> uuid.UUID:
+    return create_baseline_benchmark_trial(
+        settings,
+        campaign_id,
+        seed,
+        idempotency_key,
+        warmup_seconds,
+        duration_seconds,
+        concurrency,
+        fidelity,
+        p99_slo_ms,
+        max_attempts,
+        preflight_id=preflight_id,
+        evidence_role=evidence_role,
+        evaluation_role=evaluation_role,
+        restore_mechanism=restore_mechanism,
+        physical_archive_id=physical_archive_id,
+    )
 
 
 def create_tuned_benchmark_trial(
@@ -587,6 +729,7 @@ def create_tuned_benchmark_trial(
         "warmup_seconds": warmup_seconds,
         "duration_seconds": duration_seconds,
         "concurrency": concurrency,
+        "pgbench_maintenance_policy": PGBENCH_MAINTENANCE_POLICY,
         "seed": seed,
         "p99_slo_ms": p99_slo_ms,
         "expected_configuration": requested,
@@ -645,6 +788,147 @@ def create_tuned_benchmark_trial(
             (
                 trial_id,
                 Jsonb({"idempotency_key": idempotency_key, "candidate": requested}),
+            ),
+        )
+        conn.commit()
+    return trial_id
+
+
+def create_v2_tuned_benchmark_trial(
+    settings: Settings,
+    campaign_id: uuid.UUID,
+    preflight_id: uuid.UUID,
+    candidate: dict[str, str],
+    seed: int,
+    idempotency_key: str,
+    *,
+    evidence_role: str = "CALIBRATION",
+    evaluation_role: str = "SATURATION_TRADEOFF",
+    warmup_seconds: int = 120,
+    duration_seconds: int = 600,
+    concurrency: int = 32,
+    client_threads: int = 4,
+    max_attempts: int = 3,
+    restore_mechanism: str = "logical-restore",
+    physical_archive_id: uuid.UUID | None = None,
+    benchmark_profile: str = "v2-saturation-phase2",
+    runtime_samples_required: bool = False,
+) -> uuid.UUID:
+    if not idempotency_key.strip():
+        raise ValueError("idempotency_key cannot be empty")
+    if not 1 <= len(candidate) <= 12:
+        raise ValueError("v2 tuned trials require one to twelve knobs")
+    if evidence_role not in {
+        "INFRASTRUCTURE",
+        "CALIBRATION",
+        "PRIMARY",
+        "SECONDARY",
+        "F4_CONFIRMATION",
+    }:
+        raise ValueError("invalid evidence role for an executed v2 benchmark")
+    if warmup_seconds < 0 or duration_seconds < 1 or concurrency < 1:
+        raise ValueError("invalid benchmark duration or concurrency")
+    if not 1 <= client_threads <= concurrency:
+        raise ValueError("client threads must be between one and concurrency")
+    if max_attempts < 1:
+        raise ValueError("max_attempts must be positive")
+    if not benchmark_profile.strip():
+        raise ValueError("benchmark profile cannot be empty")
+    if restore_mechanism not in {"logical-restore", "physical-archive"}:
+        raise ValueError("unsupported v2 candidate restore mechanism")
+    if (restore_mechanism == "physical-archive") != (physical_archive_id is not None):
+        raise ValueError("physical-archive trials require exactly one physical_archive_id")
+
+    requested = {str(name): str(value) for name, value in candidate.items()}
+    metadata = discover_knobs(settings, set(requested))
+    validate_candidate(requested, metadata)
+    boot = {str(row["name"]): str(row["boot_val"]) for row in metadata}
+    discovered_restart = any(row["context"] == "postmaster" for row in metadata)
+    trial_id = uuid.uuid4()
+    payload = {
+        "preflight_id": str(preflight_id),
+        "restore_mechanism": restore_mechanism,
+        "warmup_seconds": warmup_seconds,
+        "duration_seconds": duration_seconds,
+        "concurrency": concurrency,
+        "client_threads": client_threads,
+        "pgbench_maintenance_policy": PGBENCH_MAINTENANCE_POLICY,
+        "seed": seed,
+        "p99_slo_ms": 1_000_000_000.0,
+        "p99_slo_applied": False,
+        "expected_configuration": requested,
+        "previous_configuration": boot,
+        "requested_configuration": requested,
+        "requires_restart": discovered_restart,
+        "unconditional_restart": True,
+        "activation_class": "unconditional-restart",
+        "runtime_samples_required": runtime_samples_required,
+        "label": evaluation_role.lower().replace("_", "-"),
+    }
+    if physical_archive_id is not None:
+        payload["physical_archive_id"] = str(physical_archive_id)
+
+    with connect(settings.control_dsn) as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT status,emergency_stop FROM charm_control.campaigns WHERE campaign_id=%s",
+            (campaign_id,),
+        )
+        campaign = cur.fetchone()
+        if campaign is None:
+            raise ValueError(f"unknown campaign {campaign_id}")
+        if campaign["status"] not in {"CREATED", "RUNNING", "PAUSED"}:
+            raise ValueError(f"campaign does not accept trials in state {campaign['status']}")
+        if campaign["emergency_stop"]:
+            raise ValueError("campaign emergency stop is active")
+        cur.execute(
+            """INSERT INTO charm_control.trials
+            (trial_id,campaign_id,state,benchmark_profile,fidelity,random_seed,
+             requested_configuration,workflow_kind,workflow_payload,max_attempts,idempotency_key,
+             protocol_id,evidence_role,evaluation_role,candidate_restore_required)
+            VALUES (%s,%s,'CREATED',%s,3,%s,%s,
+                    'V2_TUNED_BENCHMARK',%s,%s,%s,'thesis-protocol-v2',%s,%s,true)
+            ON CONFLICT (campaign_id,idempotency_key) WHERE idempotency_key IS NOT NULL
+            DO NOTHING RETURNING trial_id""",
+            (
+                trial_id,
+                campaign_id,
+                benchmark_profile,
+                seed,
+                Jsonb(requested),
+                Jsonb(payload),
+                max_attempts,
+                idempotency_key,
+                evidence_role,
+                evaluation_role,
+            ),
+        )
+        inserted = cur.fetchone()
+        if inserted is None:
+            cur.execute(
+                """SELECT trial_id FROM charm_control.trials
+                   WHERE campaign_id=%s AND idempotency_key=%s""",
+                (campaign_id, idempotency_key),
+            )
+            existing = cur.fetchone()
+            if existing is None:
+                raise RuntimeError("idempotent v2 tuned trial lookup failed")
+            conn.commit()
+            return existing["trial_id"]  # type: ignore[no-any-return]
+        cur.execute(
+            """INSERT INTO charm_control.trial_transitions
+            (trial_id,from_state,to_state,reason,details)
+            VALUES (%s,NULL,'CREATED','protocol-v2 tuned benchmark created',%s)""",
+            (
+                trial_id,
+                Jsonb(
+                    {
+                        "idempotency_key": idempotency_key,
+                        "preflight_id": str(preflight_id),
+                        "evidence_role": evidence_role,
+                        "evaluation_role": evaluation_role,
+                        "unconditional_restart": True,
+                    }
+                ),
             ),
         )
         conn.commit()
@@ -1045,7 +1329,7 @@ def _validate_benchmark_actions(settings: Settings, lease: TrialLease) -> dict[s
     if not isinstance(expected, dict) or not expected:
         raise ValueError("expected baseline configuration is absent")
     mutation_count = 0
-    if lease.workflow_kind == "TUNED_BENCHMARK":
+    if lease.workflow_kind in TUNED_BENCHMARK_WORKFLOWS:
         requested = {
             str(name): str(value)
             for name, value in dict(lease.payload["requested_configuration"]).items()
@@ -1058,6 +1342,10 @@ def _validate_benchmark_actions(settings: Settings, lease: TrialLease) -> dict[s
             raise ValueError(
                 "declared restart requirement does not match PostgreSQL setting metadata"
             )
+        if lease.workflow_kind == "V2_TUNED_BENCHMARK" and not bool(
+            lease.payload.get("unconditional_restart", False)
+        ):
+            raise ValueError("v2 tuned benchmarks require unconditional restart activation")
         mutation_count = len(requested)
     resources = capture_and_validate_resources(settings)
     return {
@@ -1086,6 +1374,7 @@ def _apply_tuned_configuration(settings: Settings, lease: TrialLease) -> dict[st
         requested,
         application_id=application_id,
         snapshot_id=snapshot_id,
+        force_restart=bool(lease.payload.get("unconditional_restart", False)),
     )
     return {
         "application_id": str(result.application_id),
@@ -1278,6 +1567,17 @@ def _execute_or_recover_measurement(
             renew_lease,
             poll_interval,
             application_name,
+            client_threads=(
+                int(lease.payload["client_threads"])
+                if lease.payload.get("client_threads") is not None
+                else None
+            ),
+            runtime_sample_callback=(
+                (lambda: capture_runtime_resource_sample(settings))
+                if lease.workflow_kind == SATURATION_PHASE1_WORKFLOW
+                or bool(lease.payload.get("runtime_samples_required"))
+                else None
+            ),
         )
         recovered_marker = False
     relative = execution.marker_path.relative_to(settings.artifact_dir)
@@ -1287,6 +1587,7 @@ def _execute_or_recover_measurement(
         "marker_sha256": _sha256(execution.marker_path),
         "recovered_marker": recovered_marker,
         "command": execution.command,
+        "runtime_telemetry": execution.runtime_telemetry,
         "orphan_cleanup": orphan_cleanup,
     }
 
@@ -1339,6 +1640,17 @@ def _calculate_benchmark_objectives(settings: Settings, lease: TrialLease) -> di
 def _calculate_benchmark_constraints(settings: Settings, lease: TrialLease) -> dict[str, Any]:
     action = _benchmark_action_result(settings, lease, "RUNNING_FULL_EVALUATION")
     result = _measurement_execution_from_result(settings, action).result
+    if lease.workflow_kind == SATURATION_PHASE1_WORKFLOW or lease.workflow_kind in {
+        "V2_BASELINE_BENCHMARK",
+        "V2_TUNED_BENCHMARK",
+    }:
+        return {
+            "failures": result.failures,
+            "failure_rate": result.failures / max(1, result.transactions + result.failures),
+            "p99_is_objective": True,
+            "p99_slo_applied": False,
+            "feasible": result.failures == 0,
+        }
     slo = float(lease.payload["p99_slo_ms"])
     return {
         "failures": result.failures,
@@ -1370,6 +1682,7 @@ def _persist_benchmark_observation(settings: Settings, lease: TrialLease) -> dic
         "active_configuration": verification["active_configuration"],
         "result": asdict(execution.result),
         "measurement_marker": measurement_action["marker_relative_path"],
+        "runtime_telemetry": execution.runtime_telemetry,
         "metrics_before": before,
         "metrics_after": after,
         "metric_difference": numeric_difference(before, after),
@@ -1403,7 +1716,13 @@ def _persist_benchmark_observation(settings: Settings, lease: TrialLease) -> dic
                     }
                 ),
                 Jsonb(context["client"]),
-                Jsonb(payload["result"]),
+                Jsonb(
+                    {
+                        **payload["result"],
+                        "measurement_marker": payload["measurement_marker"],
+                        "runtime_telemetry": execution.runtime_telemetry,
+                    }
+                ),
                 lease.trial_id,
             ),
         )
@@ -1789,12 +2108,78 @@ def _run_benchmark_once(
     if result := stopped():
         return result
     if state == "CREATED":
+        next_state = (
+            "RESTORING_CANDIDATE_DATASET"
+            if lease.workflow_kind in V2_BENCHMARK_WORKFLOWS
+            else "CAPTURING_WORKLOAD_CONTEXT"
+        )
+        _advance(
+            settings,
+            lease,
+            state,
+            next_state,
+            "candidate lifecycle transition persisted before target inspection",
+        )
+        state = next_state
+        if result := stopped():
+            return result
+    if state == "RESTORING_CANDIDATE_DATASET":
+        preflight_id = uuid.UUID(str(lease.payload["preflight_id"]))
+        restored = _run_action(
+            settings,
+            lease,
+            state,
+            lambda: candidate_restore_result_dict(
+                ensure_candidate_dataset_restored(
+                    settings,
+                    lease.trial_id,
+                    preflight_id,
+                    experiment_arm_id=(
+                        uuid.UUID(str(lease.payload["experiment_arm_id"]))
+                        if lease.payload.get("experiment_arm_id")
+                        else None
+                    ),
+                    budget_position=(
+                        int(lease.payload["budget_position"])
+                        if lease.payload.get("budget_position") is not None
+                        else None
+                    ),
+                    restore_mechanism=str(
+                        lease.payload.get("restore_mechanism", "logical-restore")
+                    ),
+                    physical_archive_id=(
+                        uuid.UUID(str(lease.payload["physical_archive_id"]))
+                        if lease.payload.get("physical_archive_id")
+                        else None
+                    ),
+                )
+            ),
+        )
+        _advance(
+            settings,
+            lease,
+            state,
+            "VERIFYING_CANDIDATE_BASELINE",
+            "candidate dataset restored and fingerprinted",
+            {"restore_id": str(restored["restore_id"])},
+        )
+        state = "VERIFYING_CANDIDATE_BASELINE"
+        if result := stopped():
+            return result
+    if state == "VERIFYING_CANDIDATE_BASELINE":
+        verified_restore = _run_action(
+            settings,
+            lease,
+            state,
+            lambda: verify_trial_candidate_restore(settings, lease.trial_id),
+        )
         _advance(
             settings,
             lease,
             state,
             "CAPTURING_WORKLOAD_CONTEXT",
-            "context transition persisted before target inspection",
+            "passed candidate restore link verified",
+            {"restore_id": verified_restore["restore_id"]},
         )
         state = "CAPTURING_WORKLOAD_CONTEXT"
         if result := stopped():
@@ -1834,7 +2219,7 @@ def _run_benchmark_once(
         )
         next_state = (
             "APPLYING_KNOBS"
-            if lease.workflow_kind == "TUNED_BENCHMARK"
+            if lease.workflow_kind in TUNED_BENCHMARK_WORKFLOWS
             else "VERIFYING_DATABASE_HEALTH"
         )
         _advance(
@@ -1924,10 +2309,17 @@ def _run_benchmark_once(
                 renew_lease,
                 poll_interval,
                 application_name,
+                client_threads=(
+                    int(lease.payload["client_threads"])
+                    if lease.payload.get("client_threads") is not None
+                    else None
+                ),
             )
             return {
                 "warmup_seconds": duration,
                 "completed": True,
+                "pgbench_maintenance_policy": PGBENCH_MAINTENANCE_POLICY,
+                "pgbench_maintenance_arguments": ["--no-vacuum"],
                 "orphan_cleanup": orphan_cleanup,
             }
 
@@ -2045,8 +2437,10 @@ def _run_benchmark_once(
             state,
             lambda: _persist_benchmark_observation(settings, lease),
         )
-        if lease.workflow_kind == "TUNED_BENCHMARK":
+        if lease.workflow_kind in TUNED_BENCHMARK_WORKFLOWS:
             target = "SELECTING_NEXT_ACTION"
+        elif lease.workflow_kind == SATURATION_PHASE1_WORKFLOW:
+            target = "COMPLETED" if persisted["feasible"] else "MEASUREMENT_INVALID"
         else:
             target = "COMPLETED" if persisted["feasible"] else "SLO_VIOLATED"
         _advance(settings, lease, state, target, "durable benchmark observation persisted")
@@ -2114,7 +2508,13 @@ def run_once(
                 terminal = "INVALID_CONFIGURATION"
             _fail_trial(settings, lease, error, terminal)
             raise
-    if lease.workflow_kind in {"BASELINE_BENCHMARK", "TUNED_BENCHMARK"}:
+    if lease.workflow_kind in {
+        "BASELINE_BENCHMARK",
+        "TUNED_BENCHMARK",
+        "V2_BASELINE_BENCHMARK",
+        "V2_TUNED_BENCHMARK",
+        SATURATION_PHASE1_WORKFLOW,
+    }:
         try:
             return _run_benchmark_once(settings, lease, stale, lease_seconds, stop_after_state)
         except Exception as error:
@@ -2128,6 +2528,10 @@ def run_once(
                     state = str(row["state"])
             if isinstance(error, ResourceLimitError):
                 terminal = "RESOURCE_LIMIT_EXCEEDED"
+            elif state == "RESTORING_CANDIDATE_DATASET":
+                terminal = "DATASET_RESTORE_FAILED"
+            elif state == "VERIFYING_CANDIDATE_BASELINE":
+                terminal = "BASELINE_FINGERPRINT_FAILED"
             elif state == "APPLYING_KNOBS":
                 terminal = "APPLY_FAILED"
             elif state == "RELOADING_OR_RESTARTING":
@@ -2145,7 +2549,7 @@ def run_once(
                 terminal = "WORKLOAD_FAILED"
             else:
                 terminal = "MEASUREMENT_INVALID"
-            if lease.workflow_kind == "TUNED_BENCHMARK":
+            if lease.workflow_kind in TUNED_BENCHMARK_WORKFLOWS:
                 application_id, _snapshot_id = _application_ids(lease.trial_id)
                 try:
                     with suppress(ValueError):

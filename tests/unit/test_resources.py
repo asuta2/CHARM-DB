@@ -5,9 +5,15 @@ import pytest
 from charmdb import resources
 from charmdb.resources import (
     ResourceLimitError,
+    _parse_docker_bytes,
     capture_and_validate_resources,
     validate_resource_snapshot,
 )
+
+
+def test_docker_byte_parser_preserves_binary_and_decimal_units() -> None:
+    assert _parse_docker_bytes("1.5GiB") == int(1.5 * 1024**3)
+    assert _parse_docker_bytes("2MB") == 2_000_000
 
 
 def _settings() -> SimpleNamespace:

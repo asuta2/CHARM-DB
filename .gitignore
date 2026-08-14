@@ -57,6 +57,7 @@ artifacts/raw/*
 !artifacts/raw/.gitkeep
 artifacts/reports/*
 !artifacts/reports/.gitkeep
+artifacts-newpc/
 
 # PostgreSQL and benchmark runtime output
 pgbench_log.*

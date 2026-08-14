@@ -30,6 +30,7 @@ PGBENCH_RELATIONS = (
     "public.pgbench_history",
     "public.pgbench_tellers",
 )
+CANONICAL_SNAPSHOT_FILENAME = "pgbench-canonical.dump"
 CONTENT_QUERIES = (
     ("public.pgbench_accounts", "SELECT * FROM public.pgbench_accounts ORDER BY aid"),
     ("public.pgbench_branches", "SELECT * FROM public.pgbench_branches ORDER BY bid"),
@@ -344,7 +345,7 @@ def run_manifest_preflight(
         settings.artifact_dir / "dataset-snapshots" / captured_at.strftime("%Y%m%dT%H%M%S%fZ")
     )
     output_dir.mkdir(parents=True, exist_ok=False)
-    snapshot_path = output_dir / "pgbench-scale10.dump"
+    snapshot_path = output_dir / CANONICAL_SNAPSHOT_FILENAME
     evidence_path = output_dir / "manifest-evidence.json"
     safety = _target_safety(settings)
     resources = capture_and_validate_resources(settings)

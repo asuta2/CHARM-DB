@@ -1,0 +1,48 @@
+{
+  "protocol_id": "thesis-protocol-v2",
+  "schema_version": 1,
+  "stage": "primary-comparison",
+  "status": "draft",
+  "evidence_role": "PRIMARY",
+  "operator_triggered": true,
+  "artifact_root": "artifacts-newpc/v2/primary-comparison",
+  "candidate_restore_gate": "required",
+  "prerequisites": {
+    "benchmark_profile_frozen": true,
+    "candidate_restore_policy_frozen": true,
+    "default_reference_passed": false,
+    "parameter_screening_complete": false,
+    "primary_protocol_frozen": false
+  },
+  "benchmark_profile_id": "scale500-c32-w600-f3-600-v1",
+  "search_methods": [
+    "random",
+    "sobol",
+    "bo_unconstrained",
+    "bo_constrained_qlognei",
+    "bo_constrained_qlognehvi"
+  ],
+  "candidate_budget_per_method": 40,
+  "seed_count": 5,
+  "final_seeds": [88408573, 1418705027, 642754166, 1902413987, 740267717],
+  "seed_derivation": {
+    "algorithm": "sha256-first-32-bits-mod-2147483647",
+    "labels": "thesis-protocol-v2/default-reference/primary/{1..5}",
+    "preregistered_by": "D025"
+  },
+  "shared_bo_initial_design": {
+    "status": "pending-approval",
+    "size_rule": "max(d + 1, ceil(0.30 * candidate_budget))"
+  },
+  "execution_schedule": {
+    "kind": "temporally-interleaved-rounds",
+    "schedule_seed": null,
+    "default_controls_per_seed": 5
+  },
+  "unresolved_decisions": [
+    "freeze final search space, learned constraint, and hypervolume reference point",
+    "approve shared initial design, schedule seed, and default controls",
+    "confirm 40-slot budget or pre-registered 30-slot contingency",
+    "confirm measured runtime and retry reserve"
+  ]
+}

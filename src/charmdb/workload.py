@@ -13,12 +13,15 @@ from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from psycopg.types.json import Jsonb
 
 from charmdb.config import Settings
 from charmdb.db import connect
 from charmdb.metrics import capture_snapshot, numeric_difference, percentile
+
+PGBENCH_MAINTENANCE_POLICY = "canonical-baseline-only-no-vacuum"
 
 
 @dataclass(frozen=True)
@@ -40,6 +43,156 @@ class MeasurementExecution:
     stdout: str
     stderr: str
     marker_path: Path
+    runtime_telemetry: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class PgbenchLogRecord:
+    client_id: int
+    transaction_number: int
+    latency_ms: float
+    timestamp_seconds: float
+    failed: bool
+
+
+def _resolve_client_threads(concurrency: int, client_threads: int | None) -> int:
+    resolved = min(4, concurrency) if client_threads is None else client_threads
+    if resolved < 1 or resolved > concurrency:
+        raise ValueError("client threads must be between one and concurrency")
+    return resolved
+
+
+def _pgbench_maintenance_arguments() -> list[str]:
+    """Keep startup maintenance out of every timed workload invocation."""
+    return ["--no-vacuum"]
+
+
+def _windows_process_cpu_seconds(process: subprocess.Popen[str]) -> float | None:
+    if os.name != "nt":
+        return None
+    import ctypes
+
+    class FileTime(ctypes.Structure):
+        _fields_ = [("low", ctypes.c_uint32), ("high", ctypes.c_uint32)]
+
+    handle = getattr(process, "_handle", None)
+    if handle is None:
+        return None
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    get_process_times = kernel32.GetProcessTimes
+    get_process_times.argtypes = [
+        ctypes.c_void_p,
+        ctypes.POINTER(FileTime),
+        ctypes.POINTER(FileTime),
+        ctypes.POINTER(FileTime),
+        ctypes.POINTER(FileTime),
+    ]
+    get_process_times.restype = ctypes.c_int
+    creation, exit_time, kernel, user = FileTime(), FileTime(), FileTime(), FileTime()
+    succeeded = get_process_times(
+        ctypes.c_void_p(int(handle)),
+        ctypes.byref(creation),
+        ctypes.byref(exit_time),
+        ctypes.byref(kernel),
+        ctypes.byref(user),
+    )
+    if not succeeded:
+        return None
+
+    def seconds(value: FileTime) -> float:
+        ticks = (int(value.high) << 32) | int(value.low)
+        return ticks / 10_000_000
+
+    return seconds(kernel) + seconds(user)
+
+
+def _run_profiled(
+    command: list[str],
+    password: str,
+    timeout: int,
+    client_threads: int,
+    progress_callback: Callable[[], None] | None,
+    poll_interval_seconds: float,
+    application_name: str | None,
+    runtime_sample_callback: Callable[[], dict[str, Any]] | None,
+) -> tuple[subprocess.CompletedProcess[str], dict[str, Any]]:
+    if poll_interval_seconds <= 0:
+        raise ValueError("poll interval must be positive")
+    env = os.environ.copy()
+    env["PGPASSWORD"] = password
+    if application_name is not None:
+        if not application_name.startswith("charmdb:") or len(application_name) > 63:
+            raise ValueError("workload application_name must be a bounded CHARM-DB identity")
+        env["PGAPPNAME"] = application_name
+    child_times_before = os.times()
+    process = subprocess.Popen(
+        command,
+        env=env,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    windows_cpu_before = _windows_process_cpu_seconds(process)
+    started = time.monotonic()
+    samples: list[dict[str, Any]] = []
+    deadline = started + timeout
+
+    def sample() -> None:
+        if runtime_sample_callback is None:
+            return
+        payload = runtime_sample_callback()
+        samples.append({"elapsed_seconds": time.monotonic() - started, **payload})
+
+    try:
+        sample()
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise subprocess.TimeoutExpired(command, timeout)
+            try:
+                stdout, stderr = process.communicate(timeout=min(poll_interval_seconds, remaining))
+            except subprocess.TimeoutExpired:
+                if progress_callback is not None:
+                    progress_callback()
+                sample()
+                continue
+            sample()
+            completed = subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+            completed.check_returncode()
+            break
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.communicate()
+    wall_seconds = time.monotonic() - started
+    windows_cpu_after = _windows_process_cpu_seconds(process)
+    child_times_after = os.times()
+    if windows_cpu_before is not None and windows_cpu_after is not None:
+        cpu_seconds = max(0.0, windows_cpu_after - windows_cpu_before)
+        cpu_method = "windows-get-process-times"
+    else:
+        cpu_seconds = max(
+            0.0,
+            (child_times_after.children_user + child_times_after.children_system)
+            - (child_times_before.children_user + child_times_before.children_system),
+        )
+        cpu_method = "os-child-times"
+    logical_cpus = os.cpu_count() or 1
+    telemetry = {
+        "client_cpu_seconds": cpu_seconds,
+        "wall_seconds": wall_seconds,
+        "client_threads": client_threads,
+        "host_logical_cpus": logical_cpus,
+        "client_cpu_percent_of_thread_capacity": (
+            100.0 * cpu_seconds / max(wall_seconds * client_threads, 1e-9)
+        ),
+        "client_cpu_percent_of_host_capacity": (
+            100.0 * cpu_seconds / max(wall_seconds * logical_cpus, 1e-9)
+        ),
+        "client_cpu_sampling_method": cpu_method,
+        "runtime_samples": samples,
+    }
+    return completed, telemetry
 
 
 def run_pgbench_warmup(
@@ -50,6 +203,7 @@ def run_pgbench_warmup(
     progress_callback: Callable[[], None] | None = None,
     poll_interval_seconds: float = 5.0,
     application_name: str | None = None,
+    client_threads: int | None = None,
 ) -> None:
     if duration_seconds < 0:
         raise ValueError("warm-up duration cannot be negative")
@@ -57,6 +211,7 @@ def run_pgbench_warmup(
         raise ValueError("concurrency must be positive")
     if duration_seconds == 0:
         return
+    resolved_threads = _resolve_client_threads(concurrency, client_threads)
     command = [
         "pgbench",
         "-h",
@@ -70,11 +225,12 @@ def run_pgbench_warmup(
         "-c",
         str(concurrency),
         "-j",
-        str(min(4, concurrency)),
+        str(resolved_threads),
         "-T",
         str(duration_seconds),
         "--random-seed",
         str(seed),
+        *_pgbench_maintenance_arguments(),
     ]
     _run(
         command,
@@ -108,6 +264,7 @@ def load_measurement_marker(path: Path) -> MeasurementExecution:
         stdout=str(payload.get("stdout", "")),
         stderr=str(payload.get("stderr", "")),
         marker_path=path,
+        runtime_telemetry=dict(payload.get("runtime_telemetry") or {}),
     )
 
 
@@ -121,6 +278,8 @@ def run_pgbench_measurement(
     progress_callback: Callable[[], None] | None = None,
     poll_interval_seconds: float = 5.0,
     application_name: str | None = None,
+    client_threads: int | None = None,
+    runtime_sample_callback: Callable[[], dict[str, Any]] | None = None,
 ) -> MeasurementExecution:
     settings.assert_target_allowed()
     if shutil.which("pgbench") is None:
@@ -131,6 +290,7 @@ def run_pgbench_measurement(
     marker_path = output_dir / f"measurement-attempt-{attempt}.json"
     if marker_path.exists():
         return load_measurement_marker(marker_path)
+    resolved_threads = _resolve_client_threads(concurrency, client_threads)
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
     log_prefix = output_dir / f"pgbench-{stamp}-attempt-{attempt}"
     command = [
@@ -146,23 +306,27 @@ def run_pgbench_measurement(
         "-c",
         str(concurrency),
         "-j",
-        str(min(4, concurrency)),
+        str(resolved_threads),
         "-T",
         str(duration_seconds),
         "--random-seed",
         str(seed),
+        *_pgbench_maintenance_arguments(),
         "--log",
         f"--log-prefix={log_prefix}",
         "--progress=5",
     ]
+    started_at = datetime.now(UTC)
     started = time.monotonic()
-    completed = _run(
+    completed, runtime_telemetry = _run_profiled(
         command,
         settings.target_password,
         duration_seconds + 90,
+        resolved_threads,
         progress_callback,
         poll_interval_seconds,
         application_name,
+        runtime_sample_callback,
     )
     elapsed = time.monotonic() - started
     log_paths = sorted(output_dir.glob(f"{log_prefix.name}*"))
@@ -184,16 +348,26 @@ def run_pgbench_measurement(
         "seed": seed,
         "duration_seconds": duration_seconds,
         "concurrency": concurrency,
+        "pgbench_maintenance_policy": PGBENCH_MAINTENANCE_POLICY,
         "command": command,
         "result": asdict(result),
         "stdout": completed.stdout,
         "stderr": completed.stderr,
+        "runtime_telemetry": runtime_telemetry,
+        "started_at": started_at.isoformat(),
         "completed_at": datetime.now(UTC).isoformat(),
     }
     temporary = marker_path.with_suffix(".json.tmp")
     temporary.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     temporary.replace(marker_path)
-    return MeasurementExecution(result, command, completed.stdout, completed.stderr, marker_path)
+    return MeasurementExecution(
+        result,
+        command,
+        completed.stdout,
+        completed.stderr,
+        marker_path,
+        runtime_telemetry,
+    )
 
 
 def _run(
@@ -275,23 +449,59 @@ def parse_pgbench_logs(paths: list[Path]) -> tuple[list[float], int, int]:
     failures = 0
     transactions = 0
     for path in paths:
-        for line in path.read_text(encoding="utf-8").splitlines():
-            if not line or line.startswith("#"):
-                continue
-            fields = line.split()
-            if len(fields) < 3:
-                continue
-            try:
-                latency_us = int(fields[2])
-            except ValueError:
-                failures += 1
-                continue
-            transactions += 1
-            if latency_us >= 0:
-                latencies_ms.append(latency_us / 1000.0)
-            else:
-                failures += 1
+        with path.open("r", encoding="utf-8") as handle:
+            for line in handle:
+                if not line or line.startswith("#"):
+                    continue
+                fields = line.split()
+                if len(fields) < 3:
+                    continue
+                try:
+                    latency_us = int(fields[2])
+                except ValueError:
+                    failures += 1
+                    continue
+                transactions += 1
+                if latency_us >= 0:
+                    latencies_ms.append(latency_us / 1000.0)
+                else:
+                    failures += 1
     return latencies_ms, transactions, failures
+
+
+def parse_pgbench_log_records(paths: list[Path]) -> list[PgbenchLogRecord]:
+    records: list[PgbenchLogRecord] = []
+    for path in paths:
+        with path.open("r", encoding="utf-8") as handle:
+            for line in handle:
+                if not line or line.startswith("#"):
+                    continue
+                fields = line.split()
+                if len(fields) < 3:
+                    continue
+                try:
+                    client_id = int(fields[0])
+                    transaction_number = int(fields[1])
+                    latency_us = int(fields[2])
+                except ValueError:
+                    continue
+                timestamp_seconds = 0.0
+                if len(fields) >= 6:
+                    try:
+                        timestamp_seconds = int(fields[4]) + int(fields[5]) / 1_000_000.0
+                    except ValueError:
+                        timestamp_seconds = 0.0
+                failed = latency_us < 0
+                records.append(
+                    PgbenchLogRecord(
+                        client_id=client_id,
+                        transaction_number=transaction_number,
+                        latency_ms=max(0, latency_us) / 1000.0,
+                        timestamp_seconds=timestamp_seconds,
+                        failed=failed,
+                    )
+                )
+    return records
 
 
 def _parse_tps(output: str) -> float:
@@ -347,6 +557,7 @@ def benchmark_default(
         str(settings.benchmark_warmup_seconds),
         "--random-seed",
         str(settings.benchmark_seed),
+        *_pgbench_maintenance_arguments(),
     ]
     if settings.benchmark_warmup_seconds:
         _run(warmup_command, settings.target_password, settings.benchmark_warmup_seconds + 60)
@@ -374,6 +585,7 @@ def benchmark_default(
         str(settings.benchmark_duration_seconds),
         "--random-seed",
         str(settings.benchmark_seed),
+        *_pgbench_maintenance_arguments(),
         "--log",
         f"--log-prefix={log_prefix}",
         "--progress=5",

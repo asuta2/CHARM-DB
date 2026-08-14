@@ -17,6 +17,27 @@ class ResourceLimitError(RuntimeError):
     pass
 
 
+_BYTE_UNITS = {
+    "B": 1,
+    "KB": 1000,
+    "MB": 1000**2,
+    "GB": 1000**3,
+    "TB": 1000**4,
+    "KiB": 1024,
+    "MiB": 1024**2,
+    "GiB": 1024**3,
+    "TiB": 1024**4,
+}
+
+
+def _parse_docker_bytes(value: str) -> int:
+    match = re.fullmatch(r"([0-9]+(?:\.[0-9]+)?)([KMGT]?i?B)", value.strip())
+    if match is None:
+        raise ResourceLimitError(f"unexpected Docker byte value: {value}")
+    number, unit = match.groups()
+    return int(float(number) * _BYTE_UNITS[unit])
+
+
 def _run_docker(command: list[str], timeout: int = 20) -> str:
     completed = subprocess.run(
         command,
@@ -77,22 +98,7 @@ def capture_resource_snapshot(settings: Settings) -> dict[str, Any]:
         _run_docker(["docker", "stats", container_id, "--no-stream", "--format", "{{json .}}"])
     )
     memory_usage_text = str(stats["MemUsage"]).split("/")[0].strip()
-    memory_units = {
-        "B": 1,
-        "KB": 1000,
-        "MB": 1000**2,
-        "GB": 1000**3,
-        "TB": 1000**4,
-        "KiB": 1024,
-        "MiB": 1024**2,
-        "GiB": 1024**3,
-        "TiB": 1024**4,
-    }
-    match = re.fullmatch(r"([0-9]+(?:\.[0-9]+)?)([KMGT]?i?B)", memory_usage_text)
-    if match is None:
-        raise ResourceLimitError(f"unexpected Docker memory value: {memory_usage_text}")
-    number, unit = match.groups()
-    memory_usage_bytes = int(float(number) * memory_units[unit])
+    memory_usage_bytes = _parse_docker_bytes(memory_usage_text)
     with connect(settings.target_dsn) as conn, conn.cursor() as cur:
         cur.execute("SELECT pg_database_size(current_database())::bigint AS bytes")
         row = cur.fetchone()
@@ -136,6 +142,47 @@ def capture_resource_snapshot(settings: Settings) -> dict[str, Any]:
             "driver": str(engine.get("Driver") or ""),
             "server_version": str(engine.get("ServerVersion") or ""),
         },
+    }
+
+
+def capture_runtime_resource_sample(settings: Settings) -> dict[str, Any]:
+    """Capture bounded server telemetry while a coarse saturation probe runs."""
+    container_id = _target_container_id()
+    stats = json.loads(
+        _run_docker(["docker", "stats", container_id, "--no-stream", "--format", "{{json .}}"])
+    )
+    cpu_text = str(stats.get("CPUPerc") or "").strip()
+    cpu_match = re.fullmatch(r"([0-9]+(?:\.[0-9]+)?)%", cpu_text)
+    if cpu_match is None:
+        raise ResourceLimitError(f"unexpected Docker CPU value: {cpu_text}")
+    memory_parts = str(stats.get("MemUsage") or "").split("/")
+    if len(memory_parts) != 2:
+        raise ResourceLimitError(f"unexpected Docker memory value: {stats.get('MemUsage')}")
+    with connect(settings.target_dsn) as conn, conn.cursor() as cur:
+        cur.execute(
+            """SELECT d.numbackends,d.blks_read,d.blks_hit,d.temp_files,d.temp_bytes,
+                      d.tup_inserted,d.tup_updated,d.xact_commit,
+                      pg_database_size(current_database())::bigint AS database_size_bytes,
+                      s.setting::bigint * current_setting('block_size')::bigint
+                          AS shared_buffers_bytes
+               FROM pg_stat_database d
+               CROSS JOIN pg_settings s
+               WHERE d.datname=current_database() AND s.name='shared_buffers'"""
+        )
+        row = cur.fetchone()
+    if row is None:
+        raise ResourceLimitError("runtime PostgreSQL telemetry query returned no row")
+    return {
+        "captured_at": datetime.now(UTC).isoformat(),
+        "container": {
+            "cpu_percent": float(cpu_match.group(1)),
+            "memory_usage_bytes": _parse_docker_bytes(memory_parts[0]),
+            "memory_limit_bytes": _parse_docker_bytes(memory_parts[1]),
+            "pids": int(stats.get("PIDs") or 0),
+            "block_io": str(stats.get("BlockIO") or ""),
+            "network_io": str(stats.get("NetIO") or ""),
+        },
+        "postgresql": dict(row),
     }
 
 

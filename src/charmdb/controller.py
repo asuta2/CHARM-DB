@@ -189,6 +189,7 @@ def apply_configuration(
     restart_fn: Callable[[], None] | None = None,
     application_id: uuid.UUID | None = None,
     snapshot_id: uuid.UUID | None = None,
+    force_restart: bool = False,
 ) -> ApplyResult:
     restart_fn = restart_fn or _restart_target
     settings.assert_target_allowed()
@@ -278,7 +279,7 @@ def apply_configuration(
     started = time.monotonic()
     try:
         _set_system(settings, requested)
-        _activate(settings, requires_restart, restart_fn)
+        _activate(settings, requires_restart or force_restart, restart_fn)
         verified = _read_active(settings, set(requested))
         if verified != requested:
             raise RuntimeError(f"active settings differ: requested={requested}, active={verified}")

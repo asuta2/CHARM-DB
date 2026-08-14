@@ -1,0 +1,66 @@
+{
+  "protocol_id": "thesis-protocol-v2",
+  "schema_version": 1,
+  "stage": "warmup-and-f3-duration-pilot",
+  "status": "ready",
+  "restore_inclusive_runtime_accepted": true,
+  "evidence_role": "CALIBRATION",
+  "operator_triggered": true,
+  "artifact_root": "artifacts-newpc/v2/warmup-and-f3-duration-pilot",
+  "candidate_restore_gate": "required",
+  "prerequisites": {
+    "workload_tradeoff_gate_passed": true,
+    "workload_tradeoff_campaign_id": "9f8c1124-137d-4d65-9545-2b445b3cc3fc",
+    "restore_mechanism_selected": true,
+    "restore_mechanism": "logical-restore",
+    "candidate_restore_baseline_id": "35459275-c9bf-544f-be54-4e3537464c78",
+    "observed_restore_median_seconds": 454.322
+  },
+  "warmup_calibration": {
+    "representative_configurations": [
+      "postgresql_default",
+      "default_to_throughput_25",
+      "default_to_throughput_75",
+      "latency_leaning"
+    ],
+    "warmup_seconds": 0,
+    "measurement_seconds": 1200,
+    "rolling_window_seconds": 60,
+    "restore_inclusive_lower_bound_hours": 1.838
+  },
+  "duration_pilot": {
+    "representative_configurations": [
+      "postgresql_default",
+      "default_to_throughput_25",
+      "default_to_throughput_75",
+      "throughput_leaning",
+      "default_to_latency_50",
+      "latency_leaning"
+    ],
+    "randomized_blocks": 3,
+    "schedule_seed": 20261017,
+    "long_runs": 18,
+    "long_measurement_seconds": 600,
+    "standalone_short_runs": 3,
+    "short_measurement_seconds": 300,
+    "prefix_windows_seconds": [300],
+    "secondary_windows_seconds": [300],
+    "rolling_windows_required": true,
+    "standalone_short_configuration": "postgresql_default",
+    "restore_inclusive_lower_bound_hours_at_120_second_warmup": 6.600
+  },
+  "combined_restore_inclusive_lower_bound_hours": 8.438,
+  "acceptance_thresholds": {
+    "median_tps_relative": 0.05,
+    "median_p99_ms_absolute": 1.0,
+    "rank_correlation": 0.9,
+    "pareto_membership_agreement": 0.8,
+    "standalone_tps_relative": 0.05,
+    "standalone_p99_ms_absolute": 1.0
+  },
+  "future_decisions": [
+    "freeze warmup duration",
+    "select 300 or 600 second F3 duration"
+  ],
+  "unresolved_decisions": []
+}

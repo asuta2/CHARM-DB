@@ -1,0 +1,25 @@
+{
+  "protocol_id": "thesis-protocol-v2",
+  "schema_version": 1,
+  "stage": "new-machine-bootstrap",
+  "status": "ready",
+  "evidence_role": "INFRASTRUCTURE",
+  "operator_triggered": true,
+  "artifact_root": "artifacts-newpc/v2/bootstrap",
+  "candidate_restore_gate": "under-validation",
+  "prerequisites": {
+    "fresh_control_database": true,
+    "fresh_target_volume_confirmed": true,
+    "locked_dependencies_installed": true
+  },
+  "target": {
+    "image": "postgres@sha256:5773fe724c49c42a7a9ca70202e11e1dff21fb7235b335a73f39297d200b73a2",
+    "cpus": 4,
+    "memory_bytes": 4294967296,
+    "shared_memory_bytes": 1073741824,
+    "pids_limit": 512,
+    "required_extensions": ["pg_stat_statements", "pg_buffercache", "pg_prewarm"]
+  },
+  "smoke_scale": 10,
+  "unresolved_decisions": []
+}

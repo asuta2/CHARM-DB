@@ -61,6 +61,67 @@ from charmdb.reference_block import run_f3_reference_block
 from charmdb.reporting import generate_report
 from charmdb.search_execution import progress_json, run_search_arm, start_or_resume_search_arm
 from charmdb.soak import run_soak_test, soak_result_dict
+from charmdb.v2.bootstrap import (
+    bootstrap_report_dict,
+    run_bootstrap_preflight,
+    write_bootstrap_report,
+)
+from charmdb.v2.candidate_restore import (
+    approve_candidate_baseline,
+    candidate_restore_history,
+    candidate_restore_result_dict,
+    ensure_candidate_dataset_restored,
+    register_candidate_baseline,
+)
+from charmdb.v2.default_reference import (
+    DEFAULT_REFERENCE_MANIFEST,
+    FROZEN_PREFLIGHT_ID,
+    analyze_default_reference,
+    create_default_reference_plan,
+    default_reference_history,
+    default_reference_readiness,
+    default_reference_step_dict,
+    run_default_reference_next,
+)
+from charmdb.v2.physical_archive import (
+    create_physical_archive,
+    physical_archive_dict,
+    physical_archive_history,
+)
+from charmdb.v2.restore_capability import (
+    assess_restore_capabilities,
+    capability_assessment_dict,
+    restore_capability_history,
+)
+from charmdb.v2.saturation import (
+    PHASE1_MANIFEST,
+    create_phase1_plan,
+    phase1_analysis,
+    phase1_history,
+    run_phase1_next,
+    saturation_step_dict,
+)
+from charmdb.v2.saturation_phase2 import (
+    PHASE2_MANIFEST,
+    create_phase2_plan,
+    phase2_analysis,
+    phase2_history,
+    phase2_readiness,
+    phase2_step_dict,
+    run_phase2_next,
+)
+from charmdb.v2.warmup_duration import (
+    PILOT_MANIFEST,
+    analyze_duration,
+    analyze_warmup,
+    create_pilot_plan,
+    freeze_warmup,
+    pilot_history,
+    pilot_readiness,
+    pilot_step_dict,
+    run_pilot_next,
+)
+from charmdb.v2.window_analysis import analyze_measurement_marker
 from charmdb.worker import (
     campaign_status,
     control_campaign,
@@ -69,6 +130,7 @@ from charmdb.worker import (
     create_health_trial,
     create_index_lifecycle_trial,
     create_tuned_benchmark_trial,
+    create_v2_baseline_benchmark_trial,
     run_once,
     run_worker_service,
     service_result_json,
@@ -103,6 +165,437 @@ def smoke() -> None:
             checks[name] = cur.fetchone()
     checks["target_allowed"] = True
     typer.echo(json.dumps(checks, indent=2, default=str))
+
+
+@app.command("v2-bootstrap-preflight")
+def v2_bootstrap_preflight_command(
+    phase: Annotated[str, typer.Option(help="preinitialize or postinitialize")] = "preinitialize",
+    output: Annotated[
+        Path | None, typer.Option(help="Optional immutable JSON evidence path")
+    ] = None,
+    freshness_report: Annotated[
+        Path | None,
+        typer.Option(
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            help="Required preinitialize report for postinitialize validation",
+        ),
+    ] = None,
+) -> None:
+    if phase not in {"preinitialize", "postinitialize"}:
+        raise typer.BadParameter("phase must be preinitialize or postinitialize")
+    report = run_bootstrap_preflight(
+        get_settings(),
+        phase=phase,  # type: ignore[arg-type]
+        freshness_report=freshness_report,
+    )
+    payload = bootstrap_report_dict(report)
+    if output is not None:
+        payload["evidence_path"] = str(write_bootstrap_report(report, output))
+    typer.echo(json.dumps(payload, indent=2, default=str))
+    if not report.passed:
+        raise typer.Exit(code=2)
+
+
+@app.command("v2-candidate-baseline-register")
+def v2_candidate_baseline_register_command(
+    preflight_id: uuid.UUID,
+    validation_id: uuid.UUID,
+    restore_mechanism: str = "logical-restore",
+) -> None:
+    baseline = register_candidate_baseline(
+        get_settings(),
+        preflight_id,
+        validation_id,
+        restore_mechanism=restore_mechanism,
+    )
+    typer.echo(json.dumps(asdict(baseline), indent=2, default=str))
+
+
+@app.command("v2-candidate-baseline-approve")
+def v2_candidate_baseline_approve_command(
+    baseline_id: uuid.UUID,
+    reason: str,
+) -> None:
+    baseline = approve_candidate_baseline(get_settings(), baseline_id, reason)
+    typer.echo(json.dumps(asdict(baseline), indent=2, default=str))
+
+
+@app.command("v2-candidate-trial-create")
+def v2_candidate_trial_create_command(
+    campaign_id: uuid.UUID,
+    preflight_id: uuid.UUID,
+    idempotency_key: str,
+    evidence_role: str = "INFRASTRUCTURE",
+    evaluation_role: str = "DEFAULT_CONTROL",
+    seed: int = 20260713,
+    warmup_seconds: int = typer.Option(2, min=0, max=600),
+    duration_seconds: int = typer.Option(5, min=1, max=3600),
+    concurrency: int = typer.Option(4, min=1, max=128),
+    fidelity: int = typer.Option(3, min=2, max=4),
+    p99_slo_ms: float = typer.Option(20.0, min=0.001),
+    max_attempts: int = typer.Option(3, min=1, max=20),
+    restore_mechanism: str = "logical-restore",
+    physical_archive_id: uuid.UUID | None = None,
+) -> None:
+    trial_id = create_v2_baseline_benchmark_trial(
+        get_settings(),
+        campaign_id,
+        preflight_id,
+        evidence_role,
+        seed,
+        idempotency_key,
+        warmup_seconds,
+        duration_seconds,
+        concurrency,
+        fidelity,
+        p99_slo_ms,
+        max_attempts,
+        evaluation_role,
+        restore_mechanism,
+        physical_archive_id,
+    )
+    typer.echo(json.dumps({"trial_id": str(trial_id), "state": "CREATED"}, indent=2))
+
+
+@app.command("v2-candidate-restore-history")
+def v2_candidate_restore_history_command(
+    trial_id: uuid.UUID | None = None,
+    limit: int = typer.Option(100, min=1, max=1000),
+) -> None:
+    typer.echo(
+        json.dumps(
+            candidate_restore_history(get_settings(), trial_id, limit),
+            indent=2,
+            default=str,
+        )
+    )
+
+
+@app.command("v2-candidate-restore-ensure")
+def v2_candidate_restore_ensure_command(
+    trial_id: uuid.UUID,
+    preflight_id: uuid.UUID,
+    restore_mechanism: str = "logical-restore",
+    physical_archive_id: uuid.UUID | None = None,
+) -> None:
+    typer.echo(
+        json.dumps(
+            candidate_restore_result_dict(
+                ensure_candidate_dataset_restored(
+                    get_settings(),
+                    trial_id,
+                    preflight_id,
+                    restore_mechanism=restore_mechanism,
+                    physical_archive_id=physical_archive_id,
+                )
+            ),
+            indent=2,
+            default=str,
+        )
+    )
+
+
+@app.command("v2-restore-capabilities")
+def v2_restore_capabilities_command() -> None:
+    typer.echo(
+        json.dumps(
+            capability_assessment_dict(assess_restore_capabilities(get_settings())),
+            indent=2,
+            default=str,
+        )
+    )
+
+
+@app.command("v2-physical-archive-create")
+def v2_physical_archive_create_command(
+    baseline_id: uuid.UUID,
+    assessment_id: uuid.UUID,
+) -> None:
+    typer.echo(
+        json.dumps(
+            physical_archive_dict(
+                create_physical_archive(get_settings(), baseline_id, assessment_id)
+            ),
+            indent=2,
+            default=str,
+        )
+    )
+
+
+@app.command("v2-restore-capability-history")
+def v2_restore_capability_history_command(
+    limit: int = typer.Option(100, min=1, max=1000),
+) -> None:
+    typer.echo(json.dumps(restore_capability_history(get_settings(), limit), indent=2, default=str))
+
+
+@app.command("v2-physical-archive-history")
+def v2_physical_archive_history_command(
+    limit: int = typer.Option(100, min=1, max=1000),
+) -> None:
+    typer.echo(json.dumps(physical_archive_history(get_settings(), limit), indent=2, default=str))
+
+
+@app.command("v2-saturation-phase1-create")
+def v2_saturation_phase1_create_command(
+    manifest: Path = PHASE1_MANIFEST,
+) -> None:
+    campaign_id = create_phase1_plan(get_settings(), manifest)
+    typer.echo(json.dumps({"campaign_id": str(campaign_id), "status": "CREATED"}, indent=2))
+
+
+@app.command("v2-saturation-phase1-run-next")
+def v2_saturation_phase1_run_next_command(
+    campaign_id: uuid.UUID,
+    owner: str = "v2-saturation",
+    lease_seconds: int = typer.Option(600, min=180, max=7200),
+) -> None:
+    typer.echo(
+        json.dumps(
+            saturation_step_dict(
+                run_phase1_next(
+                    get_settings(),
+                    campaign_id,
+                    owner=owner,
+                    lease_seconds=lease_seconds,
+                )
+            ),
+            indent=2,
+            default=str,
+        )
+    )
+
+
+@app.command("v2-saturation-phase1-history")
+def v2_saturation_phase1_history_command(campaign_id: uuid.UUID) -> None:
+    typer.echo(json.dumps(phase1_history(get_settings(), campaign_id), indent=2, default=str))
+
+
+@app.command("v2-saturation-phase1-analysis")
+def v2_saturation_phase1_analysis_command(campaign_id: uuid.UUID) -> None:
+    typer.echo(json.dumps(phase1_analysis(get_settings(), campaign_id), indent=2, default=str))
+
+
+@app.command("v2-saturation-phase2-create")
+def v2_saturation_phase2_create_command(
+    preflight_id: uuid.UUID,
+    manifest: Path = PHASE2_MANIFEST,
+) -> None:
+    campaign_id = create_phase2_plan(get_settings(), preflight_id, manifest)
+    typer.echo(json.dumps({"campaign_id": str(campaign_id), "status": "CREATED"}, indent=2))
+
+
+@app.command("v2-saturation-phase2-validate")
+def v2_saturation_phase2_validate_command(
+    preflight_id: uuid.UUID,
+    manifest: Path = PHASE2_MANIFEST,
+) -> None:
+    typer.echo(
+        json.dumps(
+            phase2_readiness(get_settings(), preflight_id, manifest),
+            indent=2,
+            default=str,
+        )
+    )
+
+
+@app.command("v2-saturation-phase2-run-next")
+def v2_saturation_phase2_run_next_command(
+    campaign_id: uuid.UUID,
+    owner: str = "v2-saturation-phase2",
+    lease_seconds: int = typer.Option(600, min=180, max=7200),
+) -> None:
+    typer.echo(
+        json.dumps(
+            phase2_step_dict(
+                run_phase2_next(
+                    get_settings(),
+                    campaign_id,
+                    owner=owner,
+                    lease_seconds=lease_seconds,
+                )
+            ),
+            indent=2,
+            default=str,
+        )
+    )
+
+
+@app.command("v2-saturation-phase2-history")
+def v2_saturation_phase2_history_command(campaign_id: uuid.UUID) -> None:
+    typer.echo(json.dumps(phase2_history(get_settings(), campaign_id), indent=2, default=str))
+
+
+@app.command("v2-saturation-phase2-analysis")
+def v2_saturation_phase2_analysis_command(campaign_id: uuid.UUID) -> None:
+    typer.echo(json.dumps(phase2_analysis(get_settings(), campaign_id), indent=2, default=str))
+
+
+@app.command("v2-window-analyze")
+def v2_window_analyze_command(
+    marker: Annotated[
+        Path,
+        typer.Argument(exists=True, file_okay=True, dir_okay=False, readable=True),
+    ],
+    prefix_seconds: int = typer.Option(300, min=30, max=3600),
+    rolling_window_seconds: int = typer.Option(60, min=10, max=600),
+) -> None:
+    typer.echo(
+        json.dumps(
+            analyze_measurement_marker(
+                marker,
+                prefix_seconds=prefix_seconds,
+                rolling_window_seconds=rolling_window_seconds,
+            ),
+            indent=2,
+            default=str,
+        )
+    )
+
+
+@app.command("v2-warmup-duration-validate")
+def v2_warmup_duration_validate_command(
+    preflight_id: uuid.UUID,
+    manifest: Path = PILOT_MANIFEST,
+) -> None:
+    typer.echo(
+        json.dumps(
+            pilot_readiness(get_settings(), preflight_id, manifest),
+            indent=2,
+            default=str,
+        )
+    )
+
+
+@app.command("v2-warmup-duration-create")
+def v2_warmup_duration_create_command(
+    preflight_id: uuid.UUID,
+    manifest: Path = PILOT_MANIFEST,
+) -> None:
+    campaign_id = create_pilot_plan(get_settings(), preflight_id, manifest)
+    typer.echo(json.dumps({"campaign_id": str(campaign_id), "status": "CREATED"}, indent=2))
+
+
+@app.command("v2-warmup-duration-run-next")
+def v2_warmup_duration_run_next_command(
+    campaign_id: uuid.UUID,
+    owner: str = "v2-warmup-duration",
+    lease_seconds: int = typer.Option(600, min=180, max=7200),
+) -> None:
+    typer.echo(
+        json.dumps(
+            pilot_step_dict(
+                run_pilot_next(
+                    get_settings(),
+                    campaign_id,
+                    owner=owner,
+                    lease_seconds=lease_seconds,
+                )
+            ),
+            indent=2,
+            default=str,
+        )
+    )
+
+
+@app.command("v2-warmup-duration-history")
+def v2_warmup_duration_history_command(campaign_id: uuid.UUID) -> None:
+    typer.echo(json.dumps(pilot_history(get_settings(), campaign_id), indent=2, default=str))
+
+
+@app.command("v2-warmup-analyze")
+def v2_warmup_analyze_command(campaign_id: uuid.UUID) -> None:
+    typer.echo(json.dumps(analyze_warmup(get_settings(), campaign_id), indent=2, default=str))
+
+
+@app.command("v2-warmup-freeze")
+def v2_warmup_freeze_command(
+    campaign_id: uuid.UUID,
+    selected_warmup_seconds: int = typer.Option(min=0, max=1200),
+    analysis_sha256: str = typer.Option(min=64, max=64),
+    reason: str = typer.Option(min=1),
+) -> None:
+    typer.echo(
+        json.dumps(
+            freeze_warmup(
+                get_settings(),
+                campaign_id,
+                selected_warmup_seconds,
+                analysis_sha256,
+                reason,
+            ),
+            indent=2,
+            default=str,
+        )
+    )
+
+
+@app.command("v2-duration-analyze")
+def v2_duration_analyze_command(campaign_id: uuid.UUID) -> None:
+    typer.echo(json.dumps(analyze_duration(get_settings(), campaign_id), indent=2, default=str))
+
+
+@app.command("v2-default-reference-validate")
+def v2_default_reference_validate_command(
+    preflight_id: uuid.UUID = FROZEN_PREFLIGHT_ID,
+    manifest: Annotated[
+        Path, typer.Option(exists=True, file_okay=True, dir_okay=False, readable=True)
+    ] = DEFAULT_REFERENCE_MANIFEST,
+) -> None:
+    typer.echo(
+        json.dumps(
+            default_reference_readiness(get_settings(), preflight_id, manifest),
+            indent=2,
+            default=str,
+        )
+    )
+
+
+@app.command("v2-default-reference-create")
+def v2_default_reference_create_command(
+    preflight_id: uuid.UUID = FROZEN_PREFLIGHT_ID,
+    manifest: Annotated[
+        Path, typer.Option(exists=True, file_okay=True, dir_okay=False, readable=True)
+    ] = DEFAULT_REFERENCE_MANIFEST,
+) -> None:
+    campaign_id = create_default_reference_plan(get_settings(), preflight_id, manifest)
+    typer.echo(json.dumps({"campaign_id": str(campaign_id), "status": "CREATED"}, indent=2))
+
+
+@app.command("v2-default-reference-run-next")
+def v2_default_reference_run_next_command(
+    campaign_id: uuid.UUID,
+    owner: str = "v2-default-reference",
+    lease_seconds: int = typer.Option(600, min=30, max=3600),
+) -> None:
+    typer.echo(
+        json.dumps(
+            default_reference_step_dict(
+                run_default_reference_next(
+                    get_settings(), campaign_id, owner=owner, lease_seconds=lease_seconds
+                )
+            ),
+            indent=2,
+            default=str,
+        )
+    )
+
+
+@app.command("v2-default-reference-history")
+def v2_default_reference_history_command(campaign_id: uuid.UUID) -> None:
+    typer.echo(
+        json.dumps(default_reference_history(get_settings(), campaign_id), indent=2, default=str)
+    )
+
+
+@app.command("v2-default-reference-analyze")
+def v2_default_reference_analyze_command(campaign_id: uuid.UUID) -> None:
+    typer.echo(
+        json.dumps(analyze_default_reference(get_settings(), campaign_id), indent=2, default=str)
+    )
 
 
 @app.command("knobs-discover")

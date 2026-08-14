@@ -1,4 +1,12 @@
-from charmdb.manifest_preflight import assess_manifest_evidence, normalize_schema_dump
+from charmdb.manifest_preflight import (
+    CANONICAL_SNAPSHOT_FILENAME,
+    assess_manifest_evidence,
+    normalize_schema_dump,
+)
+
+
+def test_canonical_snapshot_filename_is_scale_neutral() -> None:
+    assert CANONICAL_SNAPSHOT_FILENAME == "pgbench-canonical.dump"
 
 
 def test_schema_dump_normalization_removes_nondeterministic_headers() -> None:

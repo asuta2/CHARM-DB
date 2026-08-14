@@ -1,0 +1,30 @@
+{
+  "protocol_id": "thesis-protocol-v2",
+  "schema_version": 1,
+  "stage": "multi-fidelity",
+  "status": "draft",
+  "evidence_role": "SECONDARY",
+  "operator_triggered": true,
+  "artifact_root": "artifacts-newpc/v2/multi-fidelity",
+  "candidate_restore_gate": "required",
+  "prerequisites": {
+    "primary_campaign_complete": false,
+    "promotion_rule_preregistered": false
+  },
+  "phase_a": {
+    "kind": "retrospective-prefix-window-analysis",
+    "window_seconds": [60, 120],
+    "new_benchmark_observations": 0,
+    "minimum_spearman": 0.8,
+    "maximum_top_quartile_false_rejections": 0
+  },
+  "phase_b": {
+    "kind": "optional-live-demonstration",
+    "run_only_if_phase_a_promising": true,
+    "maximum_f2_observations": 40
+  },
+  "unresolved_decisions": [
+    "replace p99-based promotion rule with validity and default-relative throughput floor",
+    "approve thresholds before retrospective results are viewed"
+  ]
+}

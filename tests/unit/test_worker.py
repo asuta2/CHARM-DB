@@ -111,12 +111,82 @@ def test_baseline_benchmark_state_machine_requires_measurement_order() -> None:
         validate_transition("BASELINE_BENCHMARK", "WARMING_UP", "COMPLETED")
 
 
+def test_phase1_saturation_uses_benchmark_order_without_candidate_restore() -> None:
+    validate_transition(
+        worker.SATURATION_PHASE1_WORKFLOW,
+        "CREATED",
+        "CAPTURING_WORKLOAD_CONTEXT",
+    )
+    with pytest.raises(ValueError, match="V2_SATURATION_PHASE1"):
+        validate_transition(
+            worker.SATURATION_PHASE1_WORKFLOW,
+            "CREATED",
+            "RESTORING_CANDIDATE_DATASET",
+        )
+
+
 def test_tuned_benchmark_adds_apply_activation_and_rollback_states() -> None:
     validate_transition("TUNED_BENCHMARK", "ESTIMATING_STATIC_RISK", "APPLYING_KNOBS")
     validate_transition("TUNED_BENCHMARK", "APPLYING_KNOBS", "RELOADING_OR_RESTARTING")
     validate_transition("TUNED_BENCHMARK", "RELOADING_OR_RESTARTING", "VERIFYING_DATABASE_HEALTH")
     validate_transition("TUNED_BENCHMARK", "PERSISTING_OBSERVATION", "SELECTING_NEXT_ACTION")
     validate_transition("TUNED_BENCHMARK", "SELECTING_NEXT_ACTION", "COMPLETED")
+
+
+def test_v2_baseline_requires_restore_and_fingerprint_before_benchmark() -> None:
+    chain = [
+        "CREATED",
+        "RESTORING_CANDIDATE_DATASET",
+        "VERIFYING_CANDIDATE_BASELINE",
+        "CAPTURING_WORKLOAD_CONTEXT",
+        "VALIDATING_ACTIONS",
+        "ESTIMATING_STATIC_RISK",
+        "VERIFYING_DATABASE_HEALTH",
+    ]
+    for current, target in pairwise(chain):
+        validate_transition("V2_BASELINE_BENCHMARK", current, target)
+    with pytest.raises(ValueError, match="invalid V2_BASELINE_BENCHMARK transition"):
+        validate_transition("V2_BASELINE_BENCHMARK", "CREATED", "CAPTURING_WORKLOAD_CONTEXT")
+
+
+def test_v2_tuned_requires_restore_before_candidate_application() -> None:
+    validate_transition("V2_TUNED_BENCHMARK", "CREATED", "RESTORING_CANDIDATE_DATASET")
+    validate_transition(
+        "V2_TUNED_BENCHMARK",
+        "RESTORING_CANDIDATE_DATASET",
+        "VERIFYING_CANDIDATE_BASELINE",
+    )
+    validate_transition(
+        "V2_TUNED_BENCHMARK",
+        "VERIFYING_CANDIDATE_BASELINE",
+        "CAPTURING_WORKLOAD_CONTEXT",
+    )
+    validate_transition("V2_TUNED_BENCHMARK", "ESTIMATING_STATIC_RISK", "APPLYING_KNOBS")
+
+
+def test_v2_physical_archive_trial_requires_archive_identity() -> None:
+    with pytest.raises(ValueError, match="physical_archive_id"):
+        worker.create_v2_baseline_benchmark_trial(
+            object(),  # type: ignore[arg-type]
+            uuid.uuid4(),
+            uuid.uuid4(),
+            "INFRASTRUCTURE",
+            20260801,
+            "missing-archive",
+            restore_mechanism="physical-archive",
+        )
+
+
+def test_v2_tuned_trial_rejects_more_than_twelve_knobs_before_target_access() -> None:
+    with pytest.raises(ValueError, match="one to twelve knobs"):
+        worker.create_v2_tuned_benchmark_trial(
+            object(),  # type: ignore[arg-type]
+            uuid.uuid4(),
+            uuid.uuid4(),
+            {f"knob_{index}": "1" for index in range(13)},
+            20260831,
+            "too-many-knobs",
+        )
 
 
 def test_index_lifecycle_requires_build_verify_and_drop_order() -> None:
@@ -148,6 +218,8 @@ def test_all_required_failure_states_are_terminal() -> None:
         "MEASUREMENT_INVALID",
         "SLO_VIOLATED",
         "RESOURCE_LIMIT_EXCEEDED",
+        "DATASET_RESTORE_FAILED",
+        "BASELINE_FINGERPRINT_FAILED",
         "LOW_FIDELITY_REJECTED",
         "EARLY_STOPPED",
         "CALIBRATION_INVALID",

@@ -1,0 +1,64 @@
+{
+  "protocol_id": "thesis-protocol-v2",
+  "schema_version": 1,
+  "stage": "candidate-restore-pilot",
+  "status": "ready",
+  "evidence_role": "INFRASTRUCTURE",
+  "operator_triggered": true,
+  "artifact_root": "artifacts-newpc/v2/candidate-restore-pilot",
+  "candidate_restore_gate": "required",
+  "selected_restore_mechanism": "logical-restore",
+  "selected_baseline_id": "35459275-c9bf-544f-be54-4e3537464c78",
+  "prerequisites": {
+    "bootstrap_passed": true,
+    "scale10_snapshot_available": true,
+    "scale10_correctness_passed": true,
+    "scale10_interruption_recovery_passed": true,
+    "scale10_idempotent_resume_passed": true,
+    "capability_assessment_persisted": true,
+    "physical_archive_scale10_passed": true,
+    "physical_archive_stopped_recovery_passed": true,
+    "scale100_logical_three_repetitions_passed": true,
+    "scale100_physical_three_repetitions_passed": true
+  },
+  "mechanism_order": ["copy-on-write", "physical-archive", "logical-restore"],
+  "capability_result": {
+    "copy-on-write": "ineligible-on-current-host",
+    "physical-archive": "passed-scale500-but-slower",
+    "logical-restore": "selected-at-scale500"
+  },
+  "scale100_results": {
+    "campaign_id": "99618f7d-0846-477b-ac25-3d35be16f137",
+    "baseline_id": "6d774bc0-1f86-57e4-bdc3-0528db37da3c",
+    "physical_archive_id": "e7faea3c-dfea-4592-965e-88e186aa05bb",
+    "logical_restore_seconds": [32.739, 36.525, 36.413],
+    "physical_archive_seconds": [66.344, 66.352, 66.166],
+    "all_exact_and_physical_fingerprints_passed": true
+  },
+  "scale500_results": {
+    "campaign_id": "04efb709-1d6a-4bfa-8720-36d2c41c8dad",
+    "preflight_id": "137d0027-c256-59fa-b583-4277e6461486",
+    "validation_id": "d66c1e80-d673-431a-9dfa-c483db514d1c",
+    "baseline_id": "35459275-c9bf-544f-be54-4e3537464c78",
+    "physical_archive_id": "adeb6fc8-69d4-4004-a2d8-8d87512ee952",
+    "logical_restore_seconds": [190.655, 197.834, 198.089],
+    "physical_archive_seconds": [218.610, 253.278, 241.372],
+    "logical_median_seconds": 197.834,
+    "logical_p95_seconds_descriptive": 198.063,
+    "physical_median_seconds": 241.372,
+    "physical_p95_seconds_descriptive": 252.087,
+    "all_exact_and_physical_fingerprints_passed": true,
+    "selected_mechanism": "logical-restore",
+    "provisional_600_second_evaluation_restore_fraction": 0.2133,
+    "runtime_threshold_result": "pause-and-escalate"
+  },
+  "repetitions": {
+    "scale_100": 3,
+    "likely_final_scale": 3
+  },
+  "runtime_thresholds": {
+    "target_fraction": 0.1,
+    "pause_and_escalate_fraction": 0.2
+  },
+  "unresolved_decisions": []
+}

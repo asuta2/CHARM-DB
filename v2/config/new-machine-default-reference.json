@@ -2,7 +2,7 @@
   "protocol_id": "thesis-protocol-v2",
   "schema_version": 1,
   "stage": "new-machine-default-reference",
-  "status": "draft",
+  "status": "ready",
   "evidence_role": "CALIBRATION",
   "operator_triggered": true,
   "artifact_root": "artifacts-newpc/v2/default-reference",
@@ -58,12 +58,10 @@
     "initial_block_lower_bound_hours": 2.311,
     "maximum_with_contingency_hours": 4.621
   },
-  "restore_inclusive_runtime_accepted": false,
+  "restore_inclusive_runtime_accepted": true,
   "future_gates": [
     "pass the five-observation launch-condition block or its fixed contingency",
     "do not start parameter screening before this block passes"
   ],
-  "unresolved_decisions": [
-    "accept the 2.311-hour initial restore-inclusive runtime and up to 4.621 hours if the fixed contingency triggers"
-  ]
+  "unresolved_decisions": []
 }

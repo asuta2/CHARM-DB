@@ -2,7 +2,7 @@
   "protocol_id": "thesis-protocol-v2",
   "schema_version": 1,
   "stage": "parameter-screening",
-  "status": "blocked",
+  "status": "ready",
   "evidence_role": "CALIBRATION",
   "operator_triggered": true,
   "artifact_root": "artifacts-newpc/v2/parameter-screening",
@@ -11,9 +11,9 @@
     "benchmark_profile_frozen": true,
     "default_reference_passed": true,
     "screening_seed_preregistered": true,
-    "durable_runner_implemented": false
+    "durable_runner_implemented": true
   },
-  "execution_ready": false,
+  "execution_ready": true,
   "benchmark_profile_id": "scale500-c32-w600-f3-600-v1",
   "design": {
     "screening_seed": 1783446633,
@@ -117,7 +117,5 @@
     "accepted": true,
     "accepted_by": "D028"
   },
-  "unresolved_decisions": [
-    "implement and validate the durable candidate-restored screening runner before execution"
-  ]
+  "unresolved_decisions": []
 }

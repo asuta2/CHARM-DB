@@ -81,6 +81,7 @@ from charmdb.v2.default_reference import (
     default_reference_history,
     default_reference_readiness,
     default_reference_step_dict,
+    export_default_reference_analysis,
     run_default_reference_next,
 )
 from charmdb.v2.physical_archive import (
@@ -595,6 +596,19 @@ def v2_default_reference_history_command(campaign_id: uuid.UUID) -> None:
 def v2_default_reference_analyze_command(campaign_id: uuid.UUID) -> None:
     typer.echo(
         json.dumps(analyze_default_reference(get_settings(), campaign_id), indent=2, default=str)
+    )
+
+
+@app.command("v2-default-reference-export")
+def v2_default_reference_export_command(
+    campaign_id: uuid.UUID,
+    output: Annotated[Path | None, typer.Option(file_okay=True, dir_okay=False)] = None,
+) -> None:
+    typer.echo(
+        json.dumps(
+            export_default_reference_analysis(get_settings(), campaign_id, output),
+            indent=2,
+        )
     )
 
 

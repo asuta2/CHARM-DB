@@ -9,7 +9,7 @@
   "candidate_restore_gate": "required",
   "prerequisites": {
     "benchmark_profile_frozen": true,
-    "default_reference_passed": false,
+    "default_reference_passed": true,
     "screening_seed_preregistered": false
   },
   "benchmark_profile_id": "scale500-c32-w600-f3-600-v1",

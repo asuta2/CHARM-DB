@@ -710,6 +710,55 @@ def analyze_default_reference(settings: Settings, campaign_id: uuid.UUID) -> dic
     return analysis
 
 
+def export_default_reference_analysis(
+    settings: Settings,
+    campaign_id: uuid.UUID,
+    output: Path | None = None,
+) -> dict[str, str]:
+    block = _block(settings, campaign_id)
+    analysis = block.get("final_analysis")
+    analysis_sha256 = block.get("final_analysis_sha256")
+    if block["status"] not in {"PASSED", "BLOCKED"} or not isinstance(analysis, dict):
+        raise ValueError("default-reference export requires a finalized analysis")
+    if not isinstance(analysis_sha256, str) or len(analysis_sha256) != 64:
+        raise ValueError("default-reference analysis has no valid persisted SHA-256")
+    artifact_root = settings.artifact_dir.resolve()
+    destination = (
+        output.resolve()
+        if output is not None
+        else (
+            artifact_root
+            / "default-reference"
+            / f"default-reference-analysis-{block['block_id']}.json"
+        ).resolve()
+    )
+    try:
+        destination.relative_to(artifact_root)
+    except ValueError as error:
+        raise ValueError(
+            "default-reference analysis export must stay under artifact root"
+        ) from error
+    encoded = json.dumps(analysis, indent=2, sort_keys=True, default=str) + "\n"
+    hash_payload = dict(analysis)
+    embedded_sha256 = hash_payload.pop("analysis_sha256", None)
+    if embedded_sha256 != analysis_sha256:
+        raise ValueError("embedded default-reference analysis hash differs from its ledger")
+    if hashlib.sha256(
+        json.dumps(hash_payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest() != analysis_sha256:
+        raise ValueError("persisted default-reference analysis hash does not verify")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary = destination.with_suffix(destination.suffix + ".tmp")
+    temporary.write_text(encoded, encoding="utf-8")
+    temporary.replace(destination)
+    return {
+        "campaign_id": str(campaign_id),
+        "block_id": str(block["block_id"]),
+        "analysis_sha256": analysis_sha256,
+        "output_path": str(destination),
+    }
+
+
 def default_reference_step_dict(step: DefaultReferenceStep) -> dict[str, Any]:
     return {
         "action": step.action,

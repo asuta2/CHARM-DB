@@ -10,7 +10,7 @@
   "prerequisites": {
     "benchmark_profile_frozen": true,
     "candidate_restore_policy_frozen": true,
-    "default_reference_passed": false,
+    "default_reference_passed": true,
     "parameter_screening_complete": false,
     "primary_protocol_frozen": false
   },

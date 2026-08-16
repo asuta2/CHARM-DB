@@ -21,6 +21,7 @@ from charmdb.controller import (
     apply_configuration,
     discover_knobs,
     rollback_configuration,
+    settings_equivalent,
     validate_candidate,
 )
 from charmdb.db import connect
@@ -59,6 +60,13 @@ from charmdb.workload import (
 V2_BENCHMARK_WORKFLOWS = frozenset({"V2_BASELINE_BENCHMARK", "V2_TUNED_BENCHMARK"})
 TUNED_BENCHMARK_WORKFLOWS = frozenset({"TUNED_BENCHMARK", "V2_TUNED_BENCHMARK"})
 SATURATION_PHASE1_WORKFLOW = "V2_SATURATION_PHASE1"
+TUNED_PRE_MEASUREMENT_RETRY_STATES = frozenset(
+    {
+        "RELOADING_OR_RESTARTING",
+        "VERIFYING_DATABASE_HEALTH",
+        "VERIFYING_ACTIVE_CONFIGURATION",
+    }
+)
 
 ACTIVE_STATES = frozenset(
     {
@@ -1408,7 +1416,7 @@ def _verify_tuned_activation(settings: Settings, lease: TrialLease) -> dict[str,
     requires_restart = bool(row["requires_restart"])
     if requires_restart != bool(lease.payload.get("requires_restart", False)):
         raise RuntimeError("stored restart requirement differs from the durable trial payload")
-    if active != requested:
+    if not settings_equivalent(requested, active, metadata):
         raise RuntimeError(f"active settings differ: requested={requested}, active={active}")
     if any(pending.values()):
         raise RuntimeError(f"configuration still has pending restart flags: {pending}")
@@ -1446,7 +1454,7 @@ def _verify_baseline_configuration(settings: Settings, lease: TrialLease) -> dic
     rows = discover_knobs(settings, set(expected))
     active = {str(row["name"]): str(row["setting"]) for row in rows}
     pending = {str(row["name"]): bool(row["pending_restart"]) for row in rows}
-    if active != expected:
+    if not settings_equivalent(expected, active, rows):
         raise ValueError(f"active configuration changed: expected={expected}, active={active}")
     if any(pending.values()):
         raise ValueError(f"baseline configuration has pending restart: {pending}")
@@ -2099,6 +2107,18 @@ def _run_benchmark_once(
     stop_after_state: str | None,
 ) -> WorkerResult:
     state = lease.state
+
+    if (
+        lease.workflow_kind in TUNED_BENCHMARK_WORKFLOWS
+        and lease.attempt_count > 1
+        and state in TUNED_PRE_MEASUREMENT_RETRY_STATES
+    ):
+        _run_action(
+            settings,
+            lease,
+            f"RECOVERING_TUNED_CONFIGURATION_ATTEMPT_{lease.attempt_count}",
+            lambda: _apply_tuned_configuration(settings, lease),
+        )
 
     def stopped() -> WorkerResult | None:
         if stop_after_state == state:

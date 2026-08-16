@@ -49,6 +49,12 @@ RESEARCH_NUMERIC_BOUNDS: dict[str, tuple[Decimal, Decimal]] = {
     "max_parallel_workers_per_gather": (Decimal("0"), Decimal("4")),
 }
 
+# PostgreSQL stores `real` GUCs with single-precision semantics and may expose a
+# shorter decimal representation through pg_settings. Keep the tolerance tight
+# enough to accept that representation change without accepting meaningful
+# configuration drift.
+REAL_SETTING_RELATIVE_TOLERANCE = Decimal("0.000005")
+
 
 @dataclass(frozen=True)
 class ApplyResult:
@@ -183,6 +189,31 @@ def _read_active(settings: Settings, names: set[str]) -> dict[str, str]:
     return {row["name"]: row["setting"] for row in rows}
 
 
+def settings_equivalent(
+    requested: Mapping[str, str],
+    active: Mapping[str, str],
+    metadata: list[dict[str, Any]],
+) -> bool:
+    if set(requested) != set(active):
+        return False
+    by_name = {str(row["name"]): row for row in metadata}
+    for name, requested_value in requested.items():
+        active_value = active[name]
+        if requested_value == active_value:
+            continue
+        if by_name.get(name, {}).get("vartype") != "real":
+            return False
+        try:
+            requested_numeric = Decimal(requested_value)
+            active_numeric = Decimal(active_value)
+        except InvalidOperation:
+            return False
+        scale = max(abs(requested_numeric), abs(active_numeric))
+        if abs(requested_numeric - active_numeric) > (REAL_SETTING_RELATIVE_TOLERANCE * scale):
+            return False
+    return True
+
+
 def apply_configuration(
     settings: Settings,
     candidate: Mapping[str, str],
@@ -221,7 +252,7 @@ def apply_configuration(
         previous = {str(name): str(value) for name, value in existing["previous"].items()}
         requires_restart = bool(existing["requires_restart"])
         active = _read_active(settings, set(requested))
-        if active == requested:
+        if settings_equivalent(requested, active, metadata):
             duration = float(existing["apply_duration_seconds"] or 0.0)
             with connect(settings.control_dsn) as control, control.cursor() as cur:
                 cur.execute(
@@ -240,7 +271,7 @@ def apply_configuration(
                 requires_restart,
                 duration,
             )
-        if active != previous:
+        if not settings_equivalent(previous, active, metadata):
             rollback_configuration(
                 settings,
                 application_id,
@@ -281,7 +312,7 @@ def apply_configuration(
         _set_system(settings, requested)
         _activate(settings, requires_restart or force_restart, restart_fn)
         verified = _read_active(settings, set(requested))
-        if verified != requested:
+        if not settings_equivalent(requested, verified, metadata):
             raise RuntimeError(f"active settings differ: requested={requested}, active={verified}")
         duration = time.monotonic() - started
         with connect(settings.control_dsn) as control, control.cursor() as cur:

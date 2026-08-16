@@ -164,6 +164,84 @@ def test_v2_tuned_requires_restore_before_candidate_application() -> None:
     validate_transition("V2_TUNED_BENCHMARK", "ESTIMATING_STATIC_RISK", "APPLYING_KNOBS")
 
 
+def test_active_configuration_accepts_postgresql_real_canonicalization(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    lease = worker.TrialLease(
+        trial_id=uuid.uuid4(),
+        campaign_id=uuid.uuid4(),
+        state="VERIFYING_ACTIVE_CONFIGURATION",
+        workflow_kind="V2_TUNED_BENCHMARK",
+        payload={"expected_configuration": {"random_page_cost": "3.700422"}},
+        attempt_count=1,
+        max_attempts=3,
+        owner="unit-worker",
+        token=uuid.uuid4(),
+        expires_at=datetime.now(UTC) + timedelta(seconds=30),
+        lease_seconds=30,
+    )
+    monkeypatch.setattr(
+        worker,
+        "discover_knobs",
+        lambda *_args: [
+            {
+                "name": "random_page_cost",
+                "setting": "3.70042",
+                "vartype": "real",
+                "pending_restart": False,
+            }
+        ],
+    )
+
+    result = worker._verify_baseline_configuration(object(), lease)  # type: ignore[arg-type]
+
+    assert result["active_configuration"] == {"random_page_cost": "3.70042"}
+
+
+def test_retry_reactivates_tuned_configuration_before_active_verification(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    lease = worker.TrialLease(
+        trial_id=uuid.uuid4(),
+        campaign_id=uuid.uuid4(),
+        state="VERIFYING_ACTIVE_CONFIGURATION",
+        workflow_kind="V2_TUNED_BENCHMARK",
+        payload={},
+        attempt_count=3,
+        max_attempts=3,
+        owner="unit-worker",
+        token=uuid.uuid4(),
+        expires_at=datetime.now(UTC) + timedelta(seconds=30),
+        lease_seconds=30,
+    )
+    actions: list[str] = []
+
+    def fake_run_action(
+        _settings: object,
+        _lease: worker.TrialLease,
+        state: str,
+        operation: object,
+    ) -> dict[str, object]:
+        actions.append(state)
+        if state == "RECOVERING_TUNED_CONFIGURATION_ATTEMPT_3":
+            assert callable(operation)
+            return {}
+        raise RuntimeError("stop after recovery")
+
+    monkeypatch.setattr(worker, "_run_action", fake_run_action)
+    monkeypatch.setattr(worker, "_apply_tuned_configuration", lambda *_args: {})
+
+    with pytest.raises(RuntimeError, match="stop after recovery"):
+        worker._run_benchmark_once(  # type: ignore[arg-type]
+            object(), lease, stale=False, lease_seconds=30, stop_after_state=None
+        )
+
+    assert actions[:2] == [
+        "RECOVERING_TUNED_CONFIGURATION_ATTEMPT_3",
+        "VERIFYING_ACTIVE_CONFIGURATION",
+    ]
+
+
 def test_v2_physical_archive_trial_requires_archive_identity() -> None:
     with pytest.raises(ValueError, match="physical_archive_id"):
         worker.create_v2_baseline_benchmark_trial(

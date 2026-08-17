@@ -149,6 +149,54 @@ def _validate_screening(payload: dict[str, Any], role: str, status: str) -> None
         raise ValueError("parameter screening cannot be ready before its durable runner passes")
 
 
+def _validate_screening_recovery(payload: dict[str, Any], role: str, status: str) -> None:
+    if role != "CALIBRATION":
+        raise ValueError("parameter-screening recovery must use CALIBRATION evidence")
+    prerequisites = _require_mapping(payload.get("prerequisites"), "prerequisites")
+    required = (
+        "benchmark_profile_frozen",
+        "default_reference_passed",
+        "source_failure_retained",
+        "durable_recovery_runner_implemented",
+        "restore_stability_validation_required",
+    )
+    if any(prerequisites.get(gate) is not True for gate in required):
+        raise ValueError("parameter-screening recovery prerequisites must be frozen")
+    source = _require_mapping(payload.get("source"), "source")
+    if (
+        source.get("required_status") != "FAILED"
+        or source.get("required_campaign_status") != "STOPPED"
+    ):
+        raise ValueError("screening recovery must retain a stopped failed source block")
+    validation = _require_mapping(
+        payload.get("restore_stability_validation"), "restore_stability_validation"
+    )
+    if (
+        validation.get("evidence_role") != "INFRASTRUCTURE"
+        or validation.get("consecutive_repetitions") != 3
+    ):
+        raise ValueError("screening recovery requires three infrastructure-only restores")
+    schedule = _require_mapping(payload.get("recovery_schedule"), "recovery_schedule")
+    observations = schedule.get("observations")
+    if not isinstance(observations, list) or [
+        item.get("position") if isinstance(item, dict) else None for item in observations
+    ] != [34, 35]:
+        raise ValueError("screening recovery must contain only frozen positions 34 and 35")
+    combined = _require_mapping(payload.get("combined_analysis"), "combined_analysis")
+    if (
+        combined.get("source_positions") != [1, 33]
+        or combined.get("recovery_positions") != [34, 35]
+        or combined.get("controls") != [1, 18, 35]
+        or combined.get("source_failed_and_planned_rows_remain_immutable") is not True
+    ):
+        raise ValueError("screening recovery combined-analysis lineage differs from D031")
+    runtime = _require_mapping(payload.get("runtime"), "runtime")
+    if runtime.get("accepted") is not True:
+        raise ValueError("screening-recovery runtime must be accepted")
+    if status == "ready" and payload.get("execution_ready") is not True:
+        raise ValueError("ready screening recovery requires its durable runner")
+
+
 def validate_manifest(payload: dict[str, Any], *, path: Path | None = None) -> ProtocolManifest:
     payload = _require_mapping(payload, "manifest")
     if payload.get("protocol_id") != PROTOCOL_ID:
@@ -180,6 +228,8 @@ def validate_manifest(payload: dict[str, Any], *, path: Path | None = None) -> P
     _validate_search_space(payload)
     if stage == "parameter-screening":
         _validate_screening(payload, role, status)
+    if stage == "parameter-screening-recovery":
+        _validate_screening_recovery(payload, role, status)
     if role == "PRIMARY":
         _validate_primary(payload, status)
     return ProtocolManifest(

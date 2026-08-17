@@ -123,6 +123,20 @@ from charmdb.v2.screening import (
     screening_readiness,
     screening_step_dict,
 )
+from charmdb.v2.screening_recovery import (
+    RECOVERY_MANIFEST,
+    analyze_screening_recovery,
+    create_restore_stability_plan,
+    create_screening_recovery_plan,
+    export_screening_recovery_analysis,
+    recovery_design_summary,
+    restore_stability_history,
+    restore_stability_readiness,
+    run_restore_stability_next,
+    run_screening_recovery_next,
+    screening_recovery_history,
+    screening_recovery_readiness,
+)
 from charmdb.v2.warmup_duration import (
     PILOT_MANIFEST,
     analyze_duration,
@@ -704,8 +718,142 @@ def v2_screening_export_command(
     campaign_id: uuid.UUID,
     output: Annotated[Path | None, typer.Option(file_okay=True, dir_okay=False)] = None,
 ) -> None:
+    typer.echo(json.dumps(export_screening_analysis(get_settings(), campaign_id, output), indent=2))
+
+
+@app.command("v2-screening-recovery-design-validate")
+def v2_screening_recovery_design_validate_command(
+    manifest: Annotated[
+        Path, typer.Option(exists=True, file_okay=True, dir_okay=False, readable=True)
+    ] = RECOVERY_MANIFEST,
+) -> None:
+    typer.echo(json.dumps(recovery_design_summary(manifest), indent=2))
+
+
+@app.command("v2-screening-recovery-restore-validate")
+def v2_screening_recovery_restore_validate_command(
+    manifest: Annotated[
+        Path, typer.Option(exists=True, file_okay=True, dir_okay=False, readable=True)
+    ] = RECOVERY_MANIFEST,
+) -> None:
     typer.echo(
-        json.dumps(export_screening_analysis(get_settings(), campaign_id, output), indent=2)
+        json.dumps(
+            restore_stability_readiness(get_settings(), manifest),
+            indent=2,
+            default=str,
+        )
+    )
+
+
+@app.command("v2-screening-recovery-restore-create")
+def v2_screening_recovery_restore_create_command(
+    manifest: Annotated[
+        Path, typer.Option(exists=True, file_okay=True, dir_okay=False, readable=True)
+    ] = RECOVERY_MANIFEST,
+) -> None:
+    validation_block_id = create_restore_stability_plan(get_settings(), manifest)
+    typer.echo(
+        json.dumps(
+            {"validation_block_id": str(validation_block_id), "status": "PLANNED"},
+            indent=2,
+        )
+    )
+
+
+@app.command("v2-screening-recovery-restore-run-next")
+def v2_screening_recovery_restore_run_next_command(
+    validation_block_id: uuid.UUID,
+    manifest: Annotated[
+        Path, typer.Option(exists=True, file_okay=True, dir_okay=False, readable=True)
+    ] = RECOVERY_MANIFEST,
+) -> None:
+    typer.echo(
+        json.dumps(
+            run_restore_stability_next(get_settings(), validation_block_id, manifest),
+            indent=2,
+            default=str,
+        )
+    )
+
+
+@app.command("v2-screening-recovery-restore-history")
+def v2_screening_recovery_restore_history_command(validation_block_id: uuid.UUID) -> None:
+    typer.echo(
+        json.dumps(
+            restore_stability_history(get_settings(), validation_block_id),
+            indent=2,
+            default=str,
+        )
+    )
+
+
+@app.command("v2-screening-recovery-validate")
+def v2_screening_recovery_validate_command(
+    manifest: Annotated[
+        Path, typer.Option(exists=True, file_okay=True, dir_okay=False, readable=True)
+    ] = RECOVERY_MANIFEST,
+) -> None:
+    typer.echo(
+        json.dumps(
+            screening_recovery_readiness(get_settings(), manifest),
+            indent=2,
+            default=str,
+        )
+    )
+
+
+@app.command("v2-screening-recovery-create")
+def v2_screening_recovery_create_command(
+    manifest: Annotated[
+        Path, typer.Option(exists=True, file_okay=True, dir_okay=False, readable=True)
+    ] = RECOVERY_MANIFEST,
+) -> None:
+    campaign_id = create_screening_recovery_plan(get_settings(), manifest)
+    typer.echo(json.dumps({"campaign_id": str(campaign_id), "status": "CREATED"}, indent=2))
+
+
+@app.command("v2-screening-recovery-run-next")
+def v2_screening_recovery_run_next_command(
+    campaign_id: uuid.UUID,
+    owner: str = "v2-screening-recovery",
+    lease_seconds: int = typer.Option(600, min=30, max=3600),
+) -> None:
+    typer.echo(
+        json.dumps(
+            screening_step_dict(
+                run_screening_recovery_next(
+                    get_settings(), campaign_id, owner=owner, lease_seconds=lease_seconds
+                )
+            ),
+            indent=2,
+            default=str,
+        )
+    )
+
+
+@app.command("v2-screening-recovery-history")
+def v2_screening_recovery_history_command(campaign_id: uuid.UUID) -> None:
+    typer.echo(
+        json.dumps(screening_recovery_history(get_settings(), campaign_id), indent=2, default=str)
+    )
+
+
+@app.command("v2-screening-recovery-analyze")
+def v2_screening_recovery_analyze_command(campaign_id: uuid.UUID) -> None:
+    typer.echo(
+        json.dumps(analyze_screening_recovery(get_settings(), campaign_id), indent=2, default=str)
+    )
+
+
+@app.command("v2-screening-recovery-export")
+def v2_screening_recovery_export_command(
+    campaign_id: uuid.UUID,
+    output: Annotated[Path | None, typer.Option(file_okay=True, dir_okay=False)] = None,
+) -> None:
+    typer.echo(
+        json.dumps(
+            export_screening_recovery_analysis(get_settings(), campaign_id, output), indent=2
+        )
     )
 
 

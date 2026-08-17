@@ -72,6 +72,12 @@ Long experiment arms remain operator-run. While an arm is active, do not migrate
 run tests, stop Docker, or start another orchestrator; report completion so its durable result can
 be audited.
 
+Protocol-v2 D031 is the current local continuation milestone. It preserves the
+failed D030 parameter-screening ledger, adds a PostgreSQL PID-1 mitigation via
+Compose `init: true`, and gates exact replacement observations 34–35 behind
+three consecutive infrastructure-only restore/fingerprint validations. See
+`v2/docs/operator-runbook.md` and `v2/config/parameter-screening-recovery.json`.
+
 Agents may run test suites. Agents must never run experiment-arm benchmarks: they must stop at a
 durable checkpoint and provide the user the exact arm command, prerequisites, expected duration,
 log/artifact paths, and terminal markers, then read the saved results after the user completes it.

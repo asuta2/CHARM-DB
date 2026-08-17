@@ -1,0 +1,108 @@
+{
+  "protocol_id": "thesis-protocol-v2",
+  "schema_version": 1,
+  "stage": "parameter-screening-recovery",
+  "status": "ready",
+  "evidence_role": "CALIBRATION",
+  "operator_triggered": true,
+  "artifact_root": "artifacts-newpc/v2/parameter-screening-recovery",
+  "candidate_restore_gate": "required",
+  "execution_ready": true,
+  "prerequisites": {
+    "benchmark_profile_frozen": true,
+    "default_reference_passed": true,
+    "source_failure_retained": true,
+    "durable_recovery_runner_implemented": true,
+    "restore_stability_validation_required": true
+  },
+  "source": {
+    "campaign_id": "df1196e0-3278-4be8-93d0-4bb05c98386f",
+    "block_id": "30e32aba-c068-542f-adf7-cef29ea9c9d4",
+    "manifest_sha256": "bc7473666ca34eb81163166b16ea82b88a05a20b8e27250f9b13c5ef87a2b83a",
+    "sobol_design_sha256": "b533c8eb540f8022e5878784c2b5a224d56d65e5688eb86ae856232cb93757cb",
+    "initial_schedule_sha256": "e4e565cded0d410d6d1206ca6a9a7b4f60f576bfc81f500b07038f288b2afada",
+    "required_status": "FAILED",
+    "required_campaign_status": "STOPPED",
+    "retained_counts": {"COMPLETED": 33, "FAILED": 1, "PLANNED": 1}
+  },
+  "mitigation": {
+    "mechanism": "docker-compose-init-process",
+    "compose_service": "target-postgres",
+    "compose_init": true,
+    "rationale": "prevent the PostgreSQL PID-1 postmaster from adopting and fatally misclassifying orphaned subprocess exits",
+    "target_image_digest": "sha256:5773fe724c49c42a7a9ca70202e11e1dff21fb7235b335a73f39297d200b73a2",
+    "target_postgresql_version": "18.1",
+    "image_or_major_minor_change_permitted": false,
+    "restore_parameter_change_permitted": false
+  },
+  "restore_stability_validation": {
+    "evidence_role": "INFRASTRUCTURE",
+    "consecutive_repetitions": 3,
+    "workload": "frozen scale-500 logical restore plus schema/content identity, standardization, and two-tier baseline fingerprint",
+    "pass_rule": "all three repetitions pass with the frozen image, PostgreSQL version, exact-core fingerprint, physical fingerprint, and no server crash",
+    "failure_action": "stop D031; do not create a recovery campaign or generate tuning measurements"
+  },
+  "recovery_schedule": {
+    "random_seed": 1783446633,
+    "schedule_sha256": "811af62df14d250c7855706db36f6a500cee52ceb3a710d1fb1adaf455166b23",
+    "observations": [
+      {
+        "position": 34,
+        "kind": "SOBOL",
+        "sobol_index": 32,
+        "configuration": {
+          "shared_buffers": "116694",
+          "effective_cache_size": "426292",
+          "work_mem": "10633",
+          "maintenance_work_mem": "410352",
+          "checkpoint_timeout": "1351",
+          "checkpoint_completion_target": "0.923121",
+          "max_wal_size": "843",
+          "random_page_cost": "1.061402",
+          "effective_io_concurrency": "93",
+          "default_statistics_target": "279",
+          "max_parallel_workers_per_gather": "0"
+        }
+      },
+      {
+        "position": 35,
+        "kind": "DEFAULT_CONTROL",
+        "configuration": {
+          "shared_buffers": "16384",
+          "effective_cache_size": "524288",
+          "work_mem": "4096",
+          "maintenance_work_mem": "65536",
+          "checkpoint_timeout": "300",
+          "checkpoint_completion_target": "0.9",
+          "max_wal_size": "1024",
+          "random_page_cost": "4",
+          "effective_io_concurrency": "16",
+          "default_statistics_target": "100",
+          "max_parallel_workers_per_gather": "2"
+        }
+      }
+    ]
+  },
+  "combined_analysis": {
+    "source_positions": [1, 33],
+    "recovery_positions": [34, 35],
+    "source_failed_and_planned_rows_remain_immutable": true,
+    "controls": [1, 18, 35],
+    "chronology_gap_is_not_adjusted_or_hidden": true,
+    "analysis_plan": "reuse D028 maximum-absolute PRCC, validity, drift, bounded OAT, and 8-12 dimension rules unchanged",
+    "drift_failure_action": "block interpretation; do not rerun or average away the delayed final control",
+    "maximum_targeted_oat_followups": 6
+  },
+  "runtime": {
+    "basis_seconds_per_observation": 1662.727767,
+    "restore_validation_repetitions": 3,
+    "initial_recovery_observations": 2,
+    "maximum_oat_observations": 6,
+    "initial_recovery_restore_inclusive_hours": 0.924,
+    "maximum_recovery_restore_inclusive_hours": 3.695,
+    "includes_restore_validation_or_operator_gaps": false,
+    "accepted": true,
+    "accepted_by": "D031"
+  },
+  "unresolved_decisions": []
+}

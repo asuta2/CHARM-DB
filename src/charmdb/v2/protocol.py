@@ -211,6 +211,44 @@ def _validate_screening_remediation(payload: dict[str, Any]) -> None:
         raise ValueError("screening-recovery remediation contract differs from D032")
 
 
+def _validate_temporal_stability(payload: dict[str, Any], role: str, status: str) -> None:
+    if role != "CALIBRATION" or payload.get("evaluation_role") != "DEFAULT_CONTROL":
+        raise ValueError("temporal stability must use CALIBRATION default controls")
+    source = _require_mapping(payload.get("source"), "source")
+    if (
+        source.get("decision") != "D033"
+        or source.get("required_block_status") != "BLOCKED"
+        or source.get("required_campaign_status") != "STOPPED"
+        or source.get("required_outcome") != "BLOCKED_DRIFT"
+    ):
+        raise ValueError("temporal stability must preserve the terminal D033 source")
+    purpose = _require_mapping(payload.get("purpose"), "purpose")
+    if (
+        purpose.get("does_not_salvage_or_reinterpret_d033") is not True
+        or purpose.get("does_not_authorize_primary_comparison") is not True
+    ):
+        raise ValueError("temporal stability cannot reinterpret D033 or authorize primary")
+    design = _require_mapping(payload.get("design"), "design")
+    if (
+        design.get("kind") != "single-fixed-five-default-launch-condition-block"
+        or design.get("observations") != 5
+        or design.get("no_contingency_or_extension") is not True
+        or design.get("maximum_inter_observation_operator_gap_minutes") != 15
+    ):
+        raise ValueError("temporal stability must remain one fixed five-default block")
+    criteria = _require_mapping(payload.get("acceptance_criteria"), "acceptance_criteria")
+    if (
+        criteria.get("required_valid_observations") != 5
+        or criteria.get("maximum_total_observations") != 5
+    ):
+        raise ValueError("temporal stability cannot add or replace observations")
+    runtime = _require_mapping(payload.get("runtime"), "runtime")
+    if runtime.get("accepted") is not True:
+        raise ValueError("temporal-stability runtime must be accepted before readiness")
+    if status == "ready" and payload.get("execution_ready") is not True:
+        raise ValueError("ready temporal stability requires its durable runner")
+
+
 def validate_manifest(payload: dict[str, Any], *, path: Path | None = None) -> ProtocolManifest:
     payload = _require_mapping(payload, "manifest")
     if payload.get("protocol_id") != PROTOCOL_ID:
@@ -249,6 +287,8 @@ def validate_manifest(payload: dict[str, Any], *, path: Path | None = None) -> P
         _validate_screening_recovery(payload, role, status)
     if stage == "parameter-screening-recovery-remediation":
         _validate_screening_remediation(payload)
+    if stage == "post-screening-temporal-stability":
+        _validate_temporal_stability(payload, role, status)
     if role == "PRIMARY":
         _validate_primary(payload, status)
     return ProtocolManifest(

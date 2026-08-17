@@ -1,0 +1,86 @@
+{
+  "protocol_id": "thesis-protocol-v2",
+  "schema_version": 1,
+  "stage": "post-screening-temporal-stability",
+  "status": "ready",
+  "evidence_role": "CALIBRATION",
+  "evaluation_role": "DEFAULT_CONTROL",
+  "operator_triggered": true,
+  "artifact_root": "artifacts-newpc/v2/post-screening-temporal-stability",
+  "candidate_restore_gate": "required",
+  "execution_ready": true,
+  "prerequisites": {
+    "terminal_d033_retained": true,
+    "frozen_benchmark_profile_retained": true,
+    "approved_candidate_restore_baseline_retained": true,
+    "durable_runner_implemented": true,
+    "primary_comparison_remains_blocked": true
+  },
+  "source": {
+    "decision": "D033",
+    "campaign_id": "8565ecfc-a584-46a9-a83f-d4347dbc1eb1",
+    "recovery_block_id": "374f0641-ada0-53cf-bc35-d20e1fdfe64e",
+    "required_block_status": "BLOCKED",
+    "required_campaign_status": "STOPPED",
+    "required_outcome": "BLOCKED_DRIFT",
+    "analysis_sha256": "5a51b941f1511b8f55962a3e5fcf279c71b98e89e94e72db4d5b7b7b2b82b1dd",
+    "observed_tps_fitted_change_relative": 0.01675314408192338,
+    "observed_p99_fitted_change_ms": 6.437829999999607
+  },
+  "purpose": {
+    "question": "is the remediated local target currently stable enough to justify pre-registering a complete fresh parameter-screening replicate",
+    "does_not_salvage_or_reinterpret_d033": true,
+    "does_not_authorize_primary_comparison": true,
+    "pass_consequence": "permit result-free pre-registration of one complete fresh screening replicate with its own controls and unseen execution order",
+    "failure_consequence": "stop local screening continuation and require an environment or protocol change before more tuning measurements"
+  },
+  "benchmark_profile": {
+    "id": "scale500-c32-w600-f3-600-v1",
+    "warmup_seconds": 600,
+    "measurement_seconds": 600,
+    "concurrency": 32,
+    "client_threads": 4,
+    "restore_mechanism": "logical-restore",
+    "pgbench_maintenance_policy": "canonical-baseline-only-no-vacuum"
+  },
+  "design": {
+    "kind": "single-fixed-five-default-launch-condition-block",
+    "observations": 5,
+    "configuration": "postgresql_default",
+    "maximum_inter_observation_operator_gap_minutes": 15,
+    "no_contingency_or_extension": true,
+    "no_concurrent_benchmark_or_test_workload": true,
+    "seed_derivation": {
+      "algorithm": "sha256-first-32-bits-mod-2147483647",
+      "labels": "thesis-protocol-v2/post-screening-temporal-stability/{1..5}"
+    },
+    "seeds": [1055524210, 1566314102, 1188081992, 1692640140, 1481021899],
+    "reserved_unusable_ledger_seeds": [761422838, 1922024623, 1023249220, 848330793, 1947955481]
+  },
+  "acceptance_criteria": {
+    "confidence_level": 0.95,
+    "maximum_tps_relative_ci_half_width": 0.05,
+    "maximum_p99_ci_half_width_ms": 5.0,
+    "maximum_tps_fitted_block_change_relative": 0.05,
+    "maximum_p99_fitted_block_change_ms": 5.0,
+    "required_valid_observations": 5,
+    "maximum_total_observations": 5,
+    "benchmark_failures_max": 0
+  },
+  "analysis_rules": {
+    "precision": "two-sided 95% Student-t confidence interval around each arithmetic mean",
+    "drift": "absolute fitted first-to-last change from ordinary least-squares slope in chronological execution order",
+    "operator_gap": "block when any next-trial start occurs more than 15 minutes after the preceding trial completes",
+    "decision": "pass only when validity, TPS precision, p99 precision, TPS drift, p99 drift, and operator-gap gates all pass",
+    "imprecision_without_drift": "block without extension; the D025 contingency is not reused"
+  },
+  "runtime": {
+    "basis_seconds_per_observation": 1662.727767,
+    "observations": 5,
+    "restore_inclusive_hours": 2.311,
+    "includes_retries_or_operator_gaps": false,
+    "accepted": true,
+    "accepted_by": "D034"
+  },
+  "unresolved_decisions": []
+}

@@ -82,8 +82,11 @@ snapshot-backed rebuild of only the synthetic target database and a fresh
 three-pass validation. No recovery benchmark has been created.
 D032 subsequently passed remediation and all three restores; the two exact tail
 observations completed. D033 is nevertheless `BLOCKED_DRIFT` because p99 fitted
-control change was 6.438 ms against the frozen 5 ms gate. No final screening
-selection or primary-comparison launch is authorized.
+control change was 6.438 ms against the frozen 5 ms gate. D034 now pre-registers
+an independent five-default temporal-stability launch gate with fresh seeds, no
+extension, and the original precision/drift limits. Its migration, runner,
+analysis, tests, and live readiness pass, but no D034 campaign has been created.
+No final screening selection or primary-comparison launch is authorized.
 
 Agents may run test suites. Agents must never run experiment-arm benchmarks: they must stop at a
 durable checkpoint and provide the user the exact arm command, prerequisites, expected duration,

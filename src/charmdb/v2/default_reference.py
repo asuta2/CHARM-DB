@@ -505,10 +505,13 @@ def default_reference_history(settings: Settings, campaign_id: uuid.UUID) -> dic
 def _linear_slope(values: list[float]) -> float:
     midpoint = (len(values) - 1) / 2
     denominator = sum((index - midpoint) ** 2 for index in range(len(values)))
-    return sum(
-        (index - midpoint) * (value - statistics.mean(values))
-        for index, value in enumerate(values)
-    ) / denominator
+    return (
+        sum(
+            (index - midpoint) * (value - statistics.mean(values))
+            for index, value in enumerate(values)
+        )
+        / denominator
+    )
 
 
 def _metric_summary(values: list[float], *, relative: bool) -> dict[str, float]:
@@ -598,6 +601,8 @@ def analyze_reference_points(
 def analyze_default_reference(settings: Settings, campaign_id: uuid.UUID) -> dict[str, Any]:
     history = default_reference_history(settings, campaign_id)
     block = history["block"]
+    if block.get("qualification_purpose") is not None:
+        raise ValueError("qualified default-reference blocks require their dedicated analyzer")
     if block["campaign_status"] != "PAUSED":
         raise ValueError("default-reference analysis requires a clean paused campaign")
     if block["status"] not in {"INITIAL_COMPLETE", "CONTINGENCY_COMPLETE"}:
@@ -716,6 +721,8 @@ def export_default_reference_analysis(
     output: Path | None = None,
 ) -> dict[str, str]:
     block = _block(settings, campaign_id)
+    if block.get("qualification_purpose") is not None:
+        raise ValueError("qualified default-reference blocks require their dedicated exporter")
     analysis = block.get("final_analysis")
     analysis_sha256 = block.get("final_analysis_sha256")
     if block["status"] not in {"PASSED", "BLOCKED"} or not isinstance(analysis, dict):
@@ -743,9 +750,12 @@ def export_default_reference_analysis(
     embedded_sha256 = hash_payload.pop("analysis_sha256", None)
     if embedded_sha256 != analysis_sha256:
         raise ValueError("embedded default-reference analysis hash differs from its ledger")
-    if hashlib.sha256(
-        json.dumps(hash_payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    ).hexdigest() != analysis_sha256:
+    if (
+        hashlib.sha256(
+            json.dumps(hash_payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()
+        != analysis_sha256
+    ):
         raise ValueError("persisted default-reference analysis hash does not verify")
     destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = destination.with_suffix(destination.suffix + ".tmp")

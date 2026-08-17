@@ -197,6 +197,20 @@ def _validate_screening_recovery(payload: dict[str, Any], role: str, status: str
         raise ValueError("ready screening recovery requires its durable runner")
 
 
+def _validate_screening_remediation(payload: dict[str, Any]) -> None:
+    supersedes = _require_mapping(payload.get("supersedes"), "supersedes")
+    remediation = _require_mapping(payload.get("remediation"), "remediation")
+    if (
+        supersedes.get("required_status") != "FAILED"
+        or not isinstance(supersedes.get("result_sha256"), str)
+        or remediation.get("evidence_role") != "INFRASTRUCTURE"
+        or remediation.get("method") != "drop-and-recreate-synthetic-target-database"
+        or remediation.get("manual_file_deletion_permitted") is not False
+        or remediation.get("recovery_source") != "hash-verified frozen logical snapshot"
+    ):
+        raise ValueError("screening-recovery remediation contract differs from D032")
+
+
 def validate_manifest(payload: dict[str, Any], *, path: Path | None = None) -> ProtocolManifest:
     payload = _require_mapping(payload, "manifest")
     if payload.get("protocol_id") != PROTOCOL_ID:
@@ -228,8 +242,13 @@ def validate_manifest(payload: dict[str, Any], *, path: Path | None = None) -> P
     _validate_search_space(payload)
     if stage == "parameter-screening":
         _validate_screening(payload, role, status)
-    if stage == "parameter-screening-recovery":
+    if stage in {
+        "parameter-screening-recovery",
+        "parameter-screening-recovery-remediation",
+    }:
         _validate_screening_recovery(payload, role, status)
+    if stage == "parameter-screening-recovery-remediation":
+        _validate_screening_remediation(payload)
     if role == "PRIMARY":
         _validate_primary(payload, status)
     return ProtocolManifest(

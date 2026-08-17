@@ -125,17 +125,22 @@ from charmdb.v2.screening import (
 )
 from charmdb.v2.screening_recovery import (
     RECOVERY_MANIFEST,
+    REMEDIATION_MANIFEST,
     analyze_screening_recovery,
     create_restore_stability_plan,
     create_screening_recovery_plan,
+    create_target_database_remediation,
     export_screening_recovery_analysis,
     recovery_design_summary,
     restore_stability_history,
     restore_stability_readiness,
     run_restore_stability_next,
     run_screening_recovery_next,
+    run_target_database_remediation,
     screening_recovery_history,
     screening_recovery_readiness,
+    target_database_remediation_history,
+    target_database_remediation_readiness,
 )
 from charmdb.v2.warmup_duration import (
     PILOT_MANIFEST,
@@ -728,6 +733,58 @@ def v2_screening_recovery_design_validate_command(
     ] = RECOVERY_MANIFEST,
 ) -> None:
     typer.echo(json.dumps(recovery_design_summary(manifest), indent=2))
+
+
+@app.command("v2-screening-recovery-remediation-validate")
+def v2_screening_recovery_remediation_validate_command(
+    manifest: Annotated[
+        Path, typer.Option(exists=True, file_okay=True, dir_okay=False, readable=True)
+    ] = REMEDIATION_MANIFEST,
+) -> None:
+    typer.echo(
+        json.dumps(
+            target_database_remediation_readiness(get_settings(), manifest),
+            indent=2,
+            default=str,
+        )
+    )
+
+
+@app.command("v2-screening-recovery-remediation-create")
+def v2_screening_recovery_remediation_create_command(
+    manifest: Annotated[
+        Path, typer.Option(exists=True, file_okay=True, dir_okay=False, readable=True)
+    ] = REMEDIATION_MANIFEST,
+) -> None:
+    remediation_id = create_target_database_remediation(get_settings(), manifest)
+    typer.echo(json.dumps({"remediation_id": str(remediation_id), "status": "PLANNED"}, indent=2))
+
+
+@app.command("v2-screening-recovery-remediation-run")
+def v2_screening_recovery_remediation_run_command(
+    remediation_id: uuid.UUID,
+    manifest: Annotated[
+        Path, typer.Option(exists=True, file_okay=True, dir_okay=False, readable=True)
+    ] = REMEDIATION_MANIFEST,
+) -> None:
+    typer.echo(
+        json.dumps(
+            run_target_database_remediation(get_settings(), remediation_id, manifest),
+            indent=2,
+            default=str,
+        )
+    )
+
+
+@app.command("v2-screening-recovery-remediation-history")
+def v2_screening_recovery_remediation_history_command(remediation_id: uuid.UUID) -> None:
+    typer.echo(
+        json.dumps(
+            target_database_remediation_history(get_settings(), remediation_id),
+            indent=2,
+            default=str,
+        )
+    )
 
 
 @app.command("v2-screening-recovery-restore-validate")

@@ -77,6 +77,9 @@ failed D030 parameter-screening ledger, adds a PostgreSQL PID-1 mitigation via
 Compose `init: true`, and gates exact replacement observations 34–35 behind
 three consecutive infrastructure-only restore/fingerprint validations. See
 `v2/docs/operator-runbook.md` and `v2/config/parameter-screening-recovery.json`.
+D031 failed closed on inherited orphan relation files; D032 now registers a
+snapshot-backed rebuild of only the synthetic target database and a fresh
+three-pass validation. No recovery benchmark has been created.
 
 Agents may run test suites. Agents must never run experiment-arm benchmarks: they must stop at a
 durable checkpoint and provide the user the exact arm command, prerequisites, expected duration,

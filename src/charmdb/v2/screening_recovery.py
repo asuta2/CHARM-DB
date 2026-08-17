@@ -9,12 +9,20 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
+import psycopg
+from psycopg import sql
+from psycopg.conninfo import make_conninfo
 from psycopg.types.json import Jsonb
 
 from charmdb.config import Settings
 from charmdb.controller import discover_knobs, validate_candidate
 from charmdb.db import connect
-from charmdb.manifest_preflight import _target_safety, validate_dataset_restore
+from charmdb.manifest_preflight import (
+    _run_restore,
+    _sha256,
+    _target_safety,
+    validate_dataset_restore,
+)
 from charmdb.v2.candidate_restore import (
     capture_live_fingerprint,
     compare_fingerprints,
@@ -50,12 +58,16 @@ from charmdb.worker import (
 )
 
 RECOVERY_MANIFEST = Path("v2/config/parameter-screening-recovery.json")
+REMEDIATION_MANIFEST = Path("v2/config/parameter-screening-recovery-remediation.json")
 RECOVERY_STAGE = "parameter-screening-recovery"
+REMEDIATION_STAGE = "parameter-screening-recovery-remediation"
 SOURCE_CAMPAIGN_ID = uuid.UUID("df1196e0-3278-4be8-93d0-4bb05c98386f")
 SOURCE_BLOCK_ID = uuid.UUID("30e32aba-c068-542f-adf7-cef29ea9c9d4")
 SOURCE_MANIFEST_SHA256 = "bc7473666ca34eb81163166b16ea82b88a05a20b8e27250f9b13c5ef87a2b83a"
 TARGET_IMAGE_DIGEST = "sha256:5773fe724c49c42a7a9ca70202e11e1dff21fb7235b335a73f39297d200b73a2"
 RECOVERY_SCHEDULE_SHA256 = "811af62df14d250c7855706db36f6a500cee52ceb3a710d1fb1adaf455166b23"
+D031_VALIDATION_BLOCK_ID = uuid.UUID("ba314a66-9d74-5dec-b50a-1b719f356ce4")
+D031_RESULT_SHA256 = "6b64b8935557faff3da2490924aae361bafdd788273ceadf51734a2e7b61c0d9"
 
 
 def _json_safe(value: Any) -> Any:
@@ -74,7 +86,9 @@ def recovery_manifest_payload(
     path: Path = RECOVERY_MANIFEST,
 ) -> tuple[str, dict[str, Any]]:
     manifest = load_manifest(path)
-    if manifest.stage != RECOVERY_STAGE or manifest.evidence_role != "CALIBRATION":
+    if manifest.stage not in {RECOVERY_STAGE, REMEDIATION_STAGE} or manifest.evidence_role != (
+        "CALIBRATION"
+    ):
         raise ValueError("screening recovery requires its dedicated CALIBRATION manifest")
     payload = manifest.payload
     source = dict(payload["source"])
@@ -96,6 +110,22 @@ def recovery_manifest_payload(
         or mitigation.get("restore_parameter_change_permitted") is not False
     ):
         raise ValueError("screening-recovery mitigation differs from D031")
+    if manifest.stage == REMEDIATION_STAGE:
+        supersedes = dict(payload.get("supersedes") or {})
+        remediation = dict(payload.get("remediation") or {})
+        if (
+            supersedes.get("validation_block_id") != str(D031_VALIDATION_BLOCK_ID)
+            or supersedes.get("manifest_sha256")
+            != "55e69fb49db2f9374fb6d48544f8e7224fea134708b1505cc3da7a5feb749eb0"
+            or supersedes.get("required_status") != "FAILED"
+            or supersedes.get("result_sha256") != D031_RESULT_SHA256
+            or remediation.get("method") != "drop-and-recreate-synthetic-target-database"
+            or remediation.get("target_database") != "charm_target"
+            or remediation.get("expected_orphan_filenodes") != [291710, 291725]
+            or remediation.get("expected_orphan_bytes") != 7_777_845_248
+            or remediation.get("manual_file_deletion_permitted") is not False
+        ):
+            raise ValueError("screening-recovery remediation differs from D032")
     _, screening_payload = screening_manifest_payload(SCREENING_MANIFEST)
     expected_schedule = [
         item
@@ -255,10 +285,19 @@ def restore_stability_readiness(
         cur.execute(
             """SELECT validation_block_id,status,result_sha256
                FROM charm_control.experiment_v2_restore_stability_blocks
-               WHERE source_screening_block_id=%s""",
-            (SOURCE_BLOCK_ID,),
+               WHERE source_screening_block_id=%s AND manifest_sha256=%s""",
+            (SOURCE_BLOCK_ID, manifest_sha256),
         )
         existing = cur.fetchone()
+        remediation = None
+        if payload["stage"] == REMEDIATION_STAGE:
+            cur.execute(
+                """SELECT remediation_id,status,result_sha256
+                   FROM charm_control.experiment_v2_target_database_remediations
+                   WHERE manifest_sha256=%s""",
+                (manifest_sha256,),
+            )
+            remediation = cur.fetchone()
     mitigation_sha256 = _canonical_sha256(payload["mitigation"])
     init_passed = (
         init_evidence["compose_init"] is True
@@ -271,6 +310,14 @@ def restore_stability_readiness(
             and payload["execution_ready"] is True
             and init_passed
             and existing is None
+            and (
+                payload["stage"] == RECOVERY_STAGE
+                or (
+                    remediation is not None
+                    and remediation["status"] == "PASSED"
+                    and isinstance(remediation["result_sha256"], str)
+                )
+            )
             and target["active_campaigns"] == 0
         ),
         "manifest_sha256": manifest_sha256,
@@ -280,6 +327,7 @@ def restore_stability_readiness(
         "source_campaign_status": source["block"]["campaign_status"],
         "container_init": init_evidence,
         "target_safety": target,
+        "remediation": dict(remediation) if remediation is not None else None,
         "existing_validation": dict(existing) if existing is not None else None,
     }
 
@@ -296,16 +344,25 @@ def create_restore_stability_plan(
         f"charmdb:v2:screening-recovery:restore:{SOURCE_BLOCK_ID}:{readiness['manifest_sha256']}",
     )
     with connect(settings.control_dsn) as conn, conn.cursor() as cur:
+        remediation_id = (
+            readiness["remediation"]["remediation_id"]
+            if readiness["remediation"] is not None
+            else None
+        )
+        supersedes = D031_VALIDATION_BLOCK_ID if readiness["remediation"] is not None else None
         cur.execute(
             """INSERT INTO charm_control.experiment_v2_restore_stability_blocks
                (validation_block_id,source_screening_block_id,protocol_id,evidence_role,
-                manifest_sha256,mitigation_sha256,status,required_repetitions)
-               VALUES (%s,%s,'thesis-protocol-v2','INFRASTRUCTURE',%s,%s,'PLANNED',3)""",
+                manifest_sha256,mitigation_sha256,status,required_repetitions,
+                remediation_id,supersedes_validation_block_id)
+               VALUES (%s,%s,'thesis-protocol-v2','INFRASTRUCTURE',%s,%s,'PLANNED',3,%s,%s)""",
             (
                 validation_block_id,
                 SOURCE_BLOCK_ID,
                 readiness["manifest_sha256"],
                 readiness["mitigation_sha256"],
+                remediation_id,
+                supersedes,
             ),
         )
         for sequence in range(1, 4):
@@ -354,6 +411,303 @@ def _baseline(settings: Settings) -> dict[str, Any]:
     if row is None:
         raise ValueError("D031 requires the approved frozen candidate baseline")
     return dict(row)
+
+
+def _database_file_evidence(
+    settings: Settings, registered_orphans: tuple[int, ...] = (291710, 291725)
+) -> dict[str, Any]:
+    with connect(settings.target_dsn) as conn, conn.cursor() as cur:
+        cur.execute(
+            """SELECT oid,pg_database_size(oid)::bigint AS database_size_bytes
+               FROM pg_database WHERE datname=current_database()"""
+        )
+        identity = dict(cur.fetchone() or {})
+        database_oid = int(identity["oid"])
+        cur.execute(
+            """SELECT pg_relation_filenode('public.pgbench_accounts'::regclass) AS heap,
+                      pg_relation_filenode('public.pgbench_accounts_pkey'::regclass) AS index"""
+        )
+        current = dict(cur.fetchone() or {})
+        relative_directory = f"base/{database_oid}"
+        cur.execute("SELECT pg_ls_dir(%s) AS name", (relative_directory,))
+        names = [str(row["name"]) for row in cur.fetchall()]
+        orphan_groups: dict[str, dict[str, Any]] = {}
+        for filenode in registered_orphans:
+            matched = [
+                name for name in names if name == str(filenode) or name.startswith(f"{filenode}.")
+            ]
+            total = 0
+            for name in matched:
+                cur.execute(
+                    "SELECT (pg_stat_file(%s)).size::bigint AS bytes",
+                    (f"{relative_directory}/{name}",),
+                )
+                total += int(cur.fetchone()["bytes"])  # type: ignore[index]
+            orphan_groups[str(filenode)] = {
+                "files": sorted(matched),
+                "file_count": len(matched),
+                "bytes": total,
+            }
+    return {
+        "database_oid": database_oid,
+        "database_size_bytes": int(identity["database_size_bytes"]),
+        "current_heap_filenode": int(current["heap"]),
+        "current_index_filenode": int(current["index"]),
+        "registered_orphans": orphan_groups,
+        "registered_orphan_bytes": sum(int(group["bytes"]) for group in orphan_groups.values()),
+    }
+
+
+def _failed_d031_validation(settings: Settings) -> dict[str, Any]:
+    with connect(settings.control_dsn) as conn, conn.cursor() as cur:
+        cur.execute(
+            """SELECT validation_block_id,status,result_sha256
+               FROM charm_control.experiment_v2_restore_stability_blocks
+               WHERE validation_block_id=%s""",
+            (D031_VALIDATION_BLOCK_ID,),
+        )
+        row = cur.fetchone()
+    if row is None or row["status"] != "FAILED" or row["result_sha256"] != D031_RESULT_SHA256:
+        raise ValueError("D032 requires the exact terminal D031 validation failure")
+    return dict(row)
+
+
+def target_database_remediation_readiness(
+    settings: Settings,
+    manifest_path: Path = REMEDIATION_MANIFEST,
+) -> dict[str, Any]:
+    manifest_sha256, payload = recovery_manifest_payload(manifest_path)
+    if payload["stage"] != REMEDIATION_STAGE:
+        raise ValueError("target-database remediation requires the D032 manifest")
+    _validate_source_state(_source_state(settings), payload)
+    failed = _failed_d031_validation(settings)
+    init_evidence = _container_init_evidence()
+    target = _target_safety(settings)
+    remediation = dict(payload["remediation"])
+    file_evidence = _database_file_evidence(
+        settings, tuple(int(item) for item in remediation["expected_orphan_filenodes"])
+    )
+    expected_pre = (
+        file_evidence["database_size_bytes"] == int(remediation["expected_pre_database_size_bytes"])
+        and file_evidence["registered_orphan_bytes"] == int(remediation["expected_orphan_bytes"])
+        and file_evidence["current_heap_filenode"] == int(remediation["current_heap_filenode"])
+        and file_evidence["current_index_filenode"] == int(remediation["current_index_filenode"])
+    )
+    with connect(settings.control_dsn) as conn, conn.cursor() as cur:
+        cur.execute(
+            """SELECT remediation_id,status,result_sha256
+               FROM charm_control.experiment_v2_target_database_remediations
+               WHERE manifest_sha256=%s""",
+            (manifest_sha256,),
+        )
+        existing = cur.fetchone()
+    return {
+        "ready": (
+            payload["status"] == "ready"
+            and payload["execution_ready"] is True
+            and failed["status"] == "FAILED"
+            and init_evidence["compose_init"] is True
+            and init_evidence["postgres_is_pid_one"] is False
+            and init_evidence["image_digest"] == TARGET_IMAGE_DIGEST
+            and target["active_campaigns"] == 0
+            and expected_pre
+            and existing is None
+        ),
+        "manifest_sha256": manifest_sha256,
+        "remediation_sha256": _canonical_sha256(remediation),
+        "failed_validation": failed,
+        "container_init": init_evidence,
+        "target_safety": target,
+        "pre_evidence": file_evidence,
+        "pre_evidence_matches_manifest": expected_pre,
+        "existing_remediation": dict(existing) if existing is not None else None,
+    }
+
+
+def create_target_database_remediation(
+    settings: Settings,
+    manifest_path: Path = REMEDIATION_MANIFEST,
+) -> uuid.UUID:
+    readiness = target_database_remediation_readiness(settings, manifest_path)
+    if readiness["ready"] is not True:
+        raise ValueError("target-database remediation is blocked until every gate passes")
+    remediation_id = uuid.uuid5(
+        uuid.NAMESPACE_URL,
+        f"charmdb:v2:screening-recovery:remediation:{readiness['manifest_sha256']}",
+    )
+    with connect(settings.control_dsn) as conn, conn.cursor() as cur:
+        cur.execute(
+            """INSERT INTO charm_control.experiment_v2_target_database_remediations
+               (remediation_id,source_screening_block_id,failed_validation_block_id,
+                protocol_id,evidence_role,manifest_sha256,remediation_sha256,status,
+                pre_evidence)
+               VALUES (%s,%s,%s,'thesis-protocol-v2','INFRASTRUCTURE',%s,%s,'PLANNED',%s)""",
+            (
+                remediation_id,
+                SOURCE_BLOCK_ID,
+                D031_VALIDATION_BLOCK_ID,
+                readiness["manifest_sha256"],
+                readiness["remediation_sha256"],
+                Jsonb(readiness["pre_evidence"]),
+            ),
+        )
+        conn.commit()
+    return remediation_id
+
+
+def target_database_remediation_history(
+    settings: Settings, remediation_id: uuid.UUID
+) -> dict[str, Any]:
+    with connect(settings.control_dsn) as conn, conn.cursor() as cur:
+        cur.execute(
+            """SELECT * FROM charm_control.experiment_v2_target_database_remediations
+               WHERE remediation_id=%s""",
+            (remediation_id,),
+        )
+        row = cur.fetchone()
+    if row is None:
+        raise ValueError(f"unknown target-database remediation {remediation_id}")
+    return dict(row)
+
+
+def _snapshot_path(settings: Settings) -> Path:
+    with connect(settings.control_dsn) as conn, conn.cursor() as cur:
+        cur.execute(
+            """SELECT dataset_snapshot_sha256,snapshot_relative_path,snapshot_byte_size
+               FROM charm_control.experiment_manifest_preflights WHERE preflight_id=%s""",
+            (FROZEN_PREFLIGHT_ID,),
+        )
+        row = cur.fetchone()
+    if row is None:
+        raise ValueError("D032 requires the frozen manifest preflight")
+    artifact_root = settings.artifact_dir.resolve()
+    snapshot = (settings.artifact_dir / str(row["snapshot_relative_path"])).resolve()
+    try:
+        snapshot.relative_to(artifact_root)
+    except ValueError as exc:
+        raise ValueError("dataset snapshot path escapes the artifact directory") from exc
+    if (
+        not snapshot.is_file()
+        or snapshot.stat().st_size != int(row["snapshot_byte_size"])
+        or _sha256(snapshot) != str(row["dataset_snapshot_sha256"])
+    ):
+        raise ValueError("D032 snapshot artifact differs from its persisted identity")
+    return snapshot
+
+
+def _recreate_target_database(settings: Settings) -> None:
+    maintenance_dsn = make_conninfo(settings.target_dsn, dbname="postgres")
+    with psycopg.connect(maintenance_dsn, autocommit=True) as conn, conn.cursor() as cur:
+        cur.execute(
+            """SELECT pg_terminate_backend(pid) FROM pg_stat_activity
+               WHERE datname=%s AND pid<>pg_backend_pid()""",
+            (settings.target_db,),
+        )
+        cur.execute(
+            sql.SQL("DROP DATABASE {} WITH (FORCE)").format(sql.Identifier(settings.target_db))
+        )
+        cur.execute(
+            sql.SQL("CREATE DATABASE {} OWNER {}").format(
+                sql.Identifier(settings.target_db), sql.Identifier(settings.target_user)
+            )
+        )
+
+
+def run_target_database_remediation(
+    settings: Settings,
+    remediation_id: uuid.UUID,
+    manifest_path: Path = REMEDIATION_MANIFEST,
+) -> dict[str, Any]:
+    manifest_sha256, payload = recovery_manifest_payload(manifest_path)
+    history = target_database_remediation_history(settings, remediation_id)
+    if history["manifest_sha256"] != manifest_sha256:
+        raise ValueError("target-database remediation manifest differs from its ledger")
+    if history["status"] in {"PASSED", "FAILED"}:
+        return {
+            "action": "already-terminal",
+            "remediation_id": str(remediation_id),
+            "status": history["status"],
+        }
+    with connect(settings.control_dsn) as conn, conn.cursor() as cur:
+        cur.execute(
+            """UPDATE charm_control.experiment_v2_target_database_remediations
+               SET status='RUNNING',started_at=clock_timestamp()
+               WHERE remediation_id=%s AND status='PLANNED'""",
+            (remediation_id,),
+        )
+        if cur.rowcount != 1:
+            raise RuntimeError("target-database remediation could not be claimed")
+        conn.commit()
+    started = time.monotonic()
+    try:
+        _validate_source_state(_source_state(settings), payload)
+        _failed_d031_validation(settings)
+        if _database_file_evidence(settings) != history["pre_evidence"]:
+            raise RuntimeError("target file evidence changed after D032 registration")
+        snapshot = _snapshot_path(settings)
+        _recreate_target_database(settings)
+        _run_restore(settings, snapshot)
+        standardize_logical_restore_state(settings)
+        validation = validate_dataset_restore(settings, FROZEN_PREFLIGHT_ID)
+        standardize_logical_restore_state(settings)
+        exact_core, physical = capture_live_fingerprint(
+            settings, FROZEN_PREFLIGHT_ID, validation.validation_id
+        )
+        baseline = _baseline(settings)
+        comparison = compare_fingerprints(
+            dict(baseline["exact_core"]),
+            dict(baseline["physical_statistics"]),
+            exact_core,
+            physical,
+            dict(baseline["physical_tolerances"]),
+        )
+        post_evidence = _database_file_evidence(settings)
+        orphans_absent = post_evidence["registered_orphan_bytes"] == 0
+        if not comparison.passed or not orphans_absent:
+            raise RuntimeError("rebuilt target failed the frozen fingerprint or orphan gate")
+        result = {
+            "remediation_id": str(remediation_id),
+            "outcome": "PASSED",
+            "method": payload["remediation"]["method"],
+            "validation_id": str(validation.validation_id),
+            "exact_core_passed": comparison.exact_core_passed,
+            "physical_statistics_passed": comparison.physical_statistics_passed,
+            "registered_orphans_absent": orphans_absent,
+            "duration_seconds": time.monotonic() - started,
+        }
+        with connect(settings.control_dsn) as conn, conn.cursor() as cur:
+            cur.execute(
+                """UPDATE charm_control.experiment_v2_target_database_remediations
+                   SET status='PASSED',post_evidence=%s,result=%s,result_sha256=%s,
+                       completed_at=clock_timestamp()
+                   WHERE remediation_id=%s AND status='RUNNING'""",
+                (
+                    Jsonb(post_evidence),
+                    Jsonb(result),
+                    _canonical_sha256(result),
+                    remediation_id,
+                ),
+            )
+            conn.commit()
+        return result
+    except Exception as error:
+        result = {
+            "remediation_id": str(remediation_id),
+            "outcome": "FAILED",
+            "error_type": type(error).__name__,
+            "message": str(error),
+            "duration_seconds": time.monotonic() - started,
+        }
+        with connect(settings.control_dsn) as conn, conn.cursor() as cur:
+            cur.execute(
+                """UPDATE charm_control.experiment_v2_target_database_remediations
+                   SET status='FAILED',result=%s,result_sha256=%s,
+                       completed_at=clock_timestamp()
+                   WHERE remediation_id=%s AND status='RUNNING'""",
+                (Jsonb(result), _canonical_sha256(result), remediation_id),
+            )
+            conn.commit()
+        raise
 
 
 def run_restore_stability_next(
@@ -568,8 +922,8 @@ def screening_recovery_readiness(
         cur.execute(
             """SELECT validation_block_id,status,result_sha256
                FROM charm_control.experiment_v2_restore_stability_blocks
-               WHERE source_screening_block_id=%s""",
-            (SOURCE_BLOCK_ID,),
+               WHERE source_screening_block_id=%s AND manifest_sha256=%s""",
+            (SOURCE_BLOCK_ID, manifest_sha256),
         )
         validation = cur.fetchone()
         cur.execute(
@@ -627,7 +981,7 @@ def create_screening_recovery_plan(
         failure_limit=8,
         campaign_settings={
             "protocol_id": "thesis-protocol-v2",
-            "stage": RECOVERY_STAGE,
+            "stage": payload["stage"],
             "manifest_sha256": readiness["manifest_sha256"],
             "source_campaign_id": str(SOURCE_CAMPAIGN_ID),
             "source_block_id": str(SOURCE_BLOCK_ID),

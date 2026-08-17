@@ -162,6 +162,16 @@ def recovery_design_summary(path: Path = RECOVERY_MANIFEST) -> dict[str, Any]:
     }
 
 
+def _recovery_manifest_for_sha256(
+    expected_sha256: str,
+) -> tuple[str, dict[str, Any], Path]:
+    for path in (RECOVERY_MANIFEST, REMEDIATION_MANIFEST):
+        manifest_sha256, payload = recovery_manifest_payload(path)
+        if manifest_sha256 == expected_sha256:
+            return manifest_sha256, payload, path
+    raise ValueError("no committed screening-recovery manifest matches the frozen campaign")
+
+
 def _container_init_evidence() -> dict[str, Any]:
     container = subprocess.run(
         ["docker", "compose", "ps", "-q", "target-postgres"],
@@ -1389,9 +1399,7 @@ def analyze_screening_recovery(settings: Settings, campaign_id: uuid.UUID) -> di
         raise ValueError("screening-recovery analysis requires a clean paused campaign")
     if block["status"] not in {"INITIAL_COMPLETE", "OAT_COMPLETE"}:
         raise ValueError("screening-recovery analysis requires a completed phase")
-    manifest_sha256, _ = recovery_manifest_payload()
-    if manifest_sha256 != block["manifest_sha256"]:
-        raise ValueError("screening-recovery manifest differs from the frozen campaign")
+    manifest_sha256, _, _ = _recovery_manifest_for_sha256(block["manifest_sha256"])
     source_manifest_sha256, screening_payload = screening_manifest_payload()
     if source_manifest_sha256 != block["source_manifest_sha256"]:
         raise ValueError("source screening manifest differs from D030 lineage")
@@ -1521,7 +1529,7 @@ def export_screening_recovery_analysis(
     embedded_sha256 = hash_payload.pop("analysis_sha256", None)
     if embedded_sha256 != analysis_sha256 or _canonical_sha256(hash_payload) != analysis_sha256:
         raise ValueError("persisted screening-recovery analysis hash does not verify")
-    _, payload = recovery_manifest_payload()
+    _, payload, _ = _recovery_manifest_for_sha256(block["manifest_sha256"])
     artifact_root = Path(str(payload["artifact_root"])).resolve()
     destination = (
         output.resolve()

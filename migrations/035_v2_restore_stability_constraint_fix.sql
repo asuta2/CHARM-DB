@@ -1,0 +1,2 @@
+ALTER TABLE charm_control.experiment_v2_restore_stability_blocks
+    DROP CONSTRAINT IF EXISTS experiment_v2_restore_stability_b_source_screening_block_id_key;

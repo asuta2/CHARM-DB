@@ -4,11 +4,14 @@ import hashlib
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+import pytest
+
 from charmdb.v2.temporal_stability import (
     PRIMARY_SEEDS,
     RESERVED_SEEDS,
     SOURCE_ANALYSIS_SHA256,
     _operator_gap_summary,
+    create_temporal_stability_plan,
     temporal_stability_design_summary,
     temporal_stability_manifest_payload,
 )
@@ -34,8 +37,17 @@ def test_manifest_freezes_a_fresh_fixed_five_run_decision() -> None:
     assert payload["acceptance_criteria"]["maximum_total_observations"] == 5
     assert payload["purpose"]["does_not_salvage_or_reinterpret_d033"] is True
     assert payload["purpose"]["does_not_authorize_primary_comparison"] is True
+    assert payload["status"] == "blocked"
+    assert payload["execution_ready"] is False
+    assert payload["retirement"]["retired_without_execution"] is True
+    assert payload["retirement"]["permanently_prohibit_launch"] is True
     assert summary["source_analysis_sha256"] == SOURCE_ANALYSIS_SHA256
     assert summary["restore_inclusive_hours"] == 2.311
+
+
+def test_retired_temporal_stability_plan_cannot_be_created() -> None:
+    with pytest.raises(ValueError, match="retired without execution"):
+        create_temporal_stability_plan(object(), MANIFEST)  # type: ignore[arg-type]
 
 
 def _gap_rows(gap_minutes: float) -> list[dict[str, object]]:

@@ -1,0 +1,102 @@
+{
+  "protocol_id": "thesis-protocol-v2",
+  "schema_version": 1,
+  "stage": "screening-interpretation-amendment",
+  "status": "ready",
+  "evidence_role": "CALIBRATION",
+  "operator_triggered": false,
+  "artifact_root": "artifacts-newpc/v2/parameter-screening-recovery",
+  "candidate_restore_gate": "required",
+  "prerequisites": {
+    "d033_terminal_history_retained": true,
+    "d034_retired_without_execution": true,
+    "operator_accepted_post_result_amendment": true
+  },
+  "source": {
+    "decision": "D033",
+    "campaign_id": "8565ecfc-a584-46a9-a83f-d4347dbc1eb1",
+    "recovery_block_id": "374f0641-ada0-53cf-bc35-d20e1fdfe64e",
+    "required_outcome": "BLOCKED_DRIFT",
+    "analysis_sha256": "5a51b941f1511b8f55962a3e5fcf279c71b98e89e94e72db4d5b7b7b2b82b1dd",
+    "valid_sobol_measurements": 32,
+    "valid_default_controls": 3,
+    "benchmark_failures": 0,
+    "tps_fitted_change_relative": 0.01675314408192338,
+    "p99_fitted_change_ms": 6.437829999999607
+  },
+  "amendment": {
+    "decision": "D035",
+    "kind": "operator-directed-post-result-screening-interpretation",
+    "does_not_rewrite_d033": true,
+    "does_not_claim_d033_passed": true,
+    "oat_waived": true,
+    "additional_screening_observations": 0,
+    "d034_campaign_required": false,
+    "screening_phase_treated_as_final": true
+  },
+  "sensitivity_evidence": {
+    "statistic": "maximum_absolute_prcc_across_throughput_tps_and_p99_ms",
+    "time_adjustment_check": "material ranking unchanged after controlling for chronological index",
+    "ranked_scores": [
+      {"parameter": "max_wal_size", "tps_prcc": -0.9021737, "p99_prcc": 0.6574807, "maximum_absolute_prcc": 0.9021737},
+      {"parameter": "shared_buffers", "tps_prcc": 0.36148, "p99_prcc": -0.09159, "maximum_absolute_prcc": 0.36148},
+      {"parameter": "effective_cache_size", "tps_prcc": 0.10242, "p99_prcc": -0.26474, "maximum_absolute_prcc": 0.26474},
+      {"parameter": "random_page_cost", "tps_prcc": 0.16002, "p99_prcc": -0.251995, "maximum_absolute_prcc": 0.251995},
+      {"parameter": "checkpoint_completion_target", "tps_prcc": -0.07176, "p99_prcc": -0.249659, "maximum_absolute_prcc": 0.249659},
+      {"parameter": "work_mem", "tps_prcc": -0.10227, "p99_prcc": 0.249316, "maximum_absolute_prcc": 0.249316},
+      {"parameter": "max_parallel_workers_per_gather", "tps_prcc": 0.169648, "p99_prcc": -0.214565, "maximum_absolute_prcc": 0.214565},
+      {"parameter": "checkpoint_timeout", "tps_prcc": 0.123408, "p99_prcc": -0.175559, "maximum_absolute_prcc": 0.175559},
+      {"parameter": "maintenance_work_mem", "maximum_absolute_prcc": 0.12791},
+      {"parameter": "effective_io_concurrency", "maximum_absolute_prcc": 0.12727},
+      {"parameter": "default_statistics_target", "maximum_absolute_prcc": 0.07327}
+    ],
+    "leave_one_out_threshold_frequency": {
+      "max_wal_size": 1.0,
+      "shared_buffers": 1.0,
+      "effective_cache_size": 0.90625,
+      "random_page_cost": 0.90625,
+      "work_mem": 0.90625,
+      "checkpoint_completion_target": 0.875,
+      "max_parallel_workers_per_gather": 0.71875,
+      "checkpoint_timeout": 0.28125,
+      "maintenance_work_mem": 0.03125,
+      "effective_io_concurrency": 0.0625,
+      "default_statistics_target": 0.03125
+    }
+  },
+  "final_search_space": {
+    "selection_rule": "Apply the frozen 0.20 PRCC threshold, retain required shared_buffers, waive ambiguous-band OAT, and use the frozen minimum dimension of eight by adding the highest-scoring remaining operationally safe parameter.",
+    "parameter_order": [
+      "shared_buffers",
+      "effective_cache_size",
+      "work_mem",
+      "checkpoint_timeout",
+      "checkpoint_completion_target",
+      "max_wal_size",
+      "random_page_cost",
+      "max_parallel_workers_per_gather"
+    ],
+    "excluded_parameters": [
+      "maintenance_work_mem",
+      "effective_io_concurrency",
+      "default_statistics_target"
+    ],
+    "parameters": {
+      "shared_buffers": {"type": "integer", "lower": 16384, "upper": 183500},
+      "effective_cache_size": {"type": "integer", "lower": 131072, "upper": 524288},
+      "work_mem": {"type": "integer", "lower": 1024, "upper": 32768},
+      "checkpoint_timeout": {"type": "integer", "lower": 300, "upper": 1800},
+      "checkpoint_completion_target": {"type": "continuous", "lower": 0.7, "upper": 0.95},
+      "max_wal_size": {"type": "integer", "lower": 512, "upper": 4096},
+      "random_page_cost": {"type": "continuous", "lower": 1.0, "upper": 4.0},
+      "max_parallel_workers_per_gather": {"type": "integer", "lower": 0, "upper": 4}
+    }
+  },
+  "limitations": [
+    "D033 failed its pre-registered p99 drift gate and is not reclassified as passed.",
+    "The final selection is a transparent post-result protocol amendment, not a pre-registered confirmatory screening conclusion.",
+    "No OAT observations were run; checkpoint_timeout is included only to satisfy the mandatory eight-dimensional thesis design and has the weakest selected evidence.",
+    "The selected space is suitable for prospective primary evaluation, but screening PRCC magnitudes must be reported as exploratory and drift-limited."
+  ],
+  "unresolved_decisions": []
+}

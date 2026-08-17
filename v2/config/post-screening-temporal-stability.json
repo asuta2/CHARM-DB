@@ -2,13 +2,13 @@
   "protocol_id": "thesis-protocol-v2",
   "schema_version": 1,
   "stage": "post-screening-temporal-stability",
-  "status": "ready",
+  "status": "blocked",
   "evidence_role": "CALIBRATION",
   "evaluation_role": "DEFAULT_CONTROL",
   "operator_triggered": true,
   "artifact_root": "artifacts-newpc/v2/post-screening-temporal-stability",
   "candidate_restore_gate": "required",
-  "execution_ready": true,
+  "execution_ready": false,
   "prerequisites": {
     "terminal_d033_retained": true,
     "frozen_benchmark_profile_retained": true,
@@ -82,5 +82,15 @@
     "accepted": true,
     "accepted_by": "D034"
   },
-  "unresolved_decisions": []
+  "retirement": {
+    "decision": "D035",
+    "retired_without_execution": true,
+    "campaign_created": false,
+    "observations_executed": 0,
+    "permanently_prohibit_launch": true,
+    "reason": "The operator accepted the completed D033 observations as final screening-phase evidence under an explicit post-result limitation and chose to continue to the primary-design milestone."
+  },
+  "unresolved_decisions": [
+    "Retired by D035 without execution; this historical design must not be launched."
+  ]
 }

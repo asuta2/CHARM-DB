@@ -89,6 +89,7 @@ from charmdb.v2.physical_archive import (
     physical_archive_dict,
     physical_archive_history,
 )
+from charmdb.v2.primary_design import PRIMARY_MANIFEST, primary_design_summary
 from charmdb.v2.restore_capability import (
     assess_restore_capabilities,
     capability_assessment_dict,
@@ -144,13 +145,7 @@ from charmdb.v2.screening_recovery import (
 )
 from charmdb.v2.temporal_stability import (
     TEMPORAL_STABILITY_MANIFEST,
-    analyze_temporal_stability,
-    create_temporal_stability_plan,
-    export_temporal_stability_analysis,
-    run_temporal_stability_next,
     temporal_stability_design_summary,
-    temporal_stability_history,
-    temporal_stability_readiness,
 )
 from charmdb.v2.warmup_duration import (
     PILOT_MANIFEST,
@@ -933,68 +928,13 @@ def v2_temporal_stability_design_validate_command(
     typer.echo(json.dumps(temporal_stability_design_summary(manifest), indent=2))
 
 
-@app.command("v2-temporal-stability-validate")
-def v2_temporal_stability_validate_command(
+@app.command("v2-primary-design-validate")
+def v2_primary_design_validate_command(
     manifest: Annotated[
         Path, typer.Option(exists=True, file_okay=True, dir_okay=False, readable=True)
-    ] = TEMPORAL_STABILITY_MANIFEST,
+    ] = PRIMARY_MANIFEST,
 ) -> None:
-    typer.echo(
-        json.dumps(temporal_stability_readiness(get_settings(), manifest), indent=2, default=str)
-    )
-
-
-@app.command("v2-temporal-stability-create")
-def v2_temporal_stability_create_command(
-    manifest: Annotated[
-        Path, typer.Option(exists=True, file_okay=True, dir_okay=False, readable=True)
-    ] = TEMPORAL_STABILITY_MANIFEST,
-) -> None:
-    campaign_id = create_temporal_stability_plan(get_settings(), manifest)
-    typer.echo(json.dumps({"campaign_id": str(campaign_id), "status": "CREATED"}, indent=2))
-
-
-@app.command("v2-temporal-stability-run-next")
-def v2_temporal_stability_run_next_command(
-    campaign_id: uuid.UUID,
-    owner: str = "v2-temporal-stability",
-    lease_seconds: int = typer.Option(600, min=30, max=3600),
-) -> None:
-    typer.echo(
-        json.dumps(
-            default_reference_step_dict(
-                run_temporal_stability_next(
-                    get_settings(), campaign_id, owner=owner, lease_seconds=lease_seconds
-                )
-            ),
-            indent=2,
-            default=str,
-        )
-    )
-
-
-@app.command("v2-temporal-stability-history")
-def v2_temporal_stability_history_command(campaign_id: uuid.UUID) -> None:
-    typer.echo(
-        json.dumps(temporal_stability_history(get_settings(), campaign_id), indent=2, default=str)
-    )
-
-
-@app.command("v2-temporal-stability-analyze")
-def v2_temporal_stability_analyze_command(campaign_id: uuid.UUID) -> None:
-    typer.echo(json.dumps(analyze_temporal_stability(get_settings(), campaign_id), indent=2))
-
-
-@app.command("v2-temporal-stability-export")
-def v2_temporal_stability_export_command(
-    campaign_id: uuid.UUID,
-    output: Annotated[Path | None, typer.Option(file_okay=True, dir_okay=False)] = None,
-) -> None:
-    typer.echo(
-        json.dumps(
-            export_temporal_stability_analysis(get_settings(), campaign_id, output), indent=2
-        )
-    )
+    typer.echo(json.dumps(primary_design_summary(manifest), indent=2))
 
 
 @app.command("knobs-discover")

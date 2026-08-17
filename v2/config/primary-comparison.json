@@ -7,42 +7,122 @@
   "operator_triggered": true,
   "artifact_root": "artifacts-newpc/v2/primary-comparison",
   "candidate_restore_gate": "required",
+  "execution_ready": false,
   "prerequisites": {
     "benchmark_profile_frozen": true,
     "candidate_restore_policy_frozen": true,
     "default_reference_passed": true,
-    "parameter_screening_complete": false,
-    "primary_protocol_frozen": false
+    "parameter_screening_complete": true,
+    "primary_protocol_frozen": true
+  },
+  "screening_basis": {
+    "decision": "D035",
+    "source_outcome": "BLOCKED_DRIFT",
+    "source_analysis_sha256": "5a51b941f1511b8f55962a3e5fcf279c71b98e89e94e72db4d5b7b7b2b82b1dd",
+    "interpretation": "post-result operator amendment; exploratory and drift-limited",
+    "d034_retired_without_execution": true
   },
   "benchmark_profile_id": "scale500-c32-w600-f3-600-v1",
   "search_methods": [
     "random",
     "sobol",
-    "bo_unconstrained",
-    "bo_constrained_qlognei",
-    "bo_constrained_qlognehvi"
+    "bo_qlognei_throughput",
+    "bo_qlognparego_multiobjective",
+    "bo_qlognehvi_multiobjective"
   ],
-  "candidate_budget_per_method": 40,
-  "seed_count": 5,
-  "final_seeds": [88408573, 1418705027, 642754166, 1902413987, 740267717],
+  "search_space": {
+    "parameter_order": [
+      "shared_buffers",
+      "effective_cache_size",
+      "work_mem",
+      "checkpoint_timeout",
+      "checkpoint_completion_target",
+      "max_wal_size",
+      "random_page_cost",
+      "max_parallel_workers_per_gather"
+    ],
+    "parameters": {
+      "shared_buffers": {"type": "integer", "lower": 16384, "upper": 183500},
+      "effective_cache_size": {"type": "integer", "lower": 131072, "upper": 524288},
+      "work_mem": {"type": "integer", "lower": 1024, "upper": 32768},
+      "checkpoint_timeout": {"type": "integer", "lower": 300, "upper": 1800},
+      "checkpoint_completion_target": {"type": "continuous", "lower": 0.7, "upper": 0.95},
+      "max_wal_size": {"type": "integer", "lower": 512, "upper": 4096},
+      "random_page_cost": {"type": "continuous", "lower": 1.0, "upper": 4.0},
+      "max_parallel_workers_per_gather": {"type": "integer", "lower": 0, "upper": 4}
+    }
+  },
+  "candidate_budget_per_method": 30,
+  "wave_a": {
+    "status": "frozen-design-not-execution-ready",
+    "seed_count": 3,
+    "seeds": [88408573, 1418705027, 642754166],
+    "candidate_budget_per_method": 30,
+    "physical_observations_per_seed": 131,
+    "physical_observations": 393
+  },
+  "wave_b": {
+    "status": "reserved-not-authorized",
+    "seed_count": 2,
+    "seeds": [1902413987, 740267717],
+    "candidate_budget_per_method": 30,
+    "physical_observations": 262,
+    "activation_rule": "May be authorized only after Wave A is complete and analyzed without changing its data, methods, budget, benchmark profile, search space, or seed identities; report Wave A separately before any pooled five-seed analysis."
+  },
   "seed_derivation": {
     "algorithm": "sha256-first-32-bits-mod-2147483647",
     "labels": "thesis-protocol-v2/default-reference/primary/{1..5}",
     "preregistered_by": "D025"
   },
   "shared_bo_initial_design": {
-    "status": "pending-approval",
-    "size_rule": "max(d + 1, ceil(0.30 * candidate_budget))"
+    "status": "frozen",
+    "size": 12,
+    "size_rule": "max(d + 1, ceil(0.30 * candidate_budget))",
+    "sharing_rule": "Within each seed, evaluate the same 12 initial configurations once and share their observations across all three Bayesian methods; each Bayesian method then receives 18 adaptive acquisition slots."
   },
   "execution_schedule": {
     "kind": "temporally-interleaved-rounds",
-    "schedule_seed": null,
-    "default_controls_per_seed": 5
+    "schedule_seed": 1432590420,
+    "schedule_seed_derivation": {
+      "algorithm": "sha256-first-32-bits-mod-2147483647",
+      "label": "thesis-protocol-v2/primary-comparison/wave-a/schedule/1"
+    },
+    "schedule_sha256": "7f1f467e0e1090a9d8e972b06d9ed1efadef8f130f9bc3a2762c7451ddccb7f4",
+    "default_controls_per_seed": 5,
+    "candidate_restore_before_every_physical_observation": true,
+    "unconditional_restart_before_every_measurement": true
+  },
+  "hypervolume_reference_point": {
+    "status": "frozen",
+    "objective_order": ["throughput_tps", "negative_p99_ms"],
+    "value": [0.0, -40.0],
+    "derivation": "Calibration-only: TPS uses the physical lower bound zero; 40 ms is the next 5 ms ceiling above 1.10 times the worst completed screening/default-control p99 of 35.83768 ms."
+  },
+  "learned_constraint_audit": {
+    "status": "fallback-reframe-approved",
+    "decision": "D036",
+    "learned_constraint_used": false,
+    "completed_trials_with_runtime_telemetry": 35,
+    "benchmark_failures": 0,
+    "minimum_observed_container_memory_headroom_fraction": 0.19525000010617077,
+    "maximum_observed_container_memory_headroom_fraction": 0.8139160156715661,
+    "median_observed_container_memory_headroom_fraction": 0.5955000000540167,
+    "observations_below_0_20": 1,
+    "below_0_20_observation_role": "postgresql_default_control",
+    "conclusion": "Calibration does not provide a defensible feasible/infeasible candidate boundary. The five-method comparison is reframed as random, Sobol, throughput-only qLogNEI, multi-objective qLogNParEGO, and multi-objective qLogNEHVI under identical hard safety gates."
+  },
+  "runtime": {
+    "basis_seconds_per_physical_observation": 1662.727767,
+    "wave_a_physical_observations": 393,
+    "wave_a_restore_inclusive_hours": 181.514,
+    "wave_b_additional_physical_observations": 262,
+    "wave_b_additional_restore_inclusive_hours": 121.01,
+    "five_seed_total_physical_observations": 655,
+    "five_seed_total_restore_inclusive_hours": 302.524,
+    "includes_retries_or_operator_gaps": false,
+    "wave_a_budget_accepted_by": "D035"
   },
   "unresolved_decisions": [
-    "freeze final search space, learned constraint, and hypervolume reference point",
-    "approve shared initial design, schedule seed, and default controls",
-    "confirm 40-slot budget or pre-registered 30-slot contingency",
-    "confirm measured runtime and retry reserve"
+    "Implement and validate the durable Wave A primary runner and its infrastructure-retry policy before campaign creation."
   ]
 }

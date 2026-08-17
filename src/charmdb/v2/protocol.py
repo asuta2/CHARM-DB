@@ -24,9 +24,19 @@ RESTORE_GATE_STATES = frozenset({"under-validation", "required", "phase-1-exempt
 PRIMARY_SEARCH_METHODS = (
     "random",
     "sobol",
-    "bo_unconstrained",
-    "bo_constrained_qlognei",
-    "bo_constrained_qlognehvi",
+    "bo_qlognei_throughput",
+    "bo_qlognparego_multiobjective",
+    "bo_qlognehvi_multiobjective",
+)
+FINAL_SCREENING_PARAMETERS = (
+    "shared_buffers",
+    "effective_cache_size",
+    "work_mem",
+    "checkpoint_timeout",
+    "checkpoint_completion_target",
+    "max_wal_size",
+    "random_page_cost",
+    "max_parallel_workers_per_gather",
 )
 POSTGRESQL_DEFAULT = "postgresql_default"
 DURABILITY_KNOBS = frozenset({"fsync", "synchronous_commit", "full_page_writes"})
@@ -103,6 +113,86 @@ def _validate_primary(payload: dict[str, Any], status: str) -> None:
         failed = [gate for gate in PRIMARY_FREEZE_GATES if prerequisites.get(gate) is not True]
         if failed:
             raise ValueError(f"PRIMARY manifest cannot be ready before gates pass: {failed}")
+        if payload.get("execution_ready") is not True:
+            raise ValueError("PRIMARY manifest cannot be ready before its durable runner passes")
+    search_space = _require_mapping(payload.get("search_space"), "search_space")
+    if search_space.get("parameter_order") != list(FINAL_SCREENING_PARAMETERS):
+        raise ValueError("PRIMARY search space must use the D035 eight-parameter order")
+    parameters = _require_mapping(search_space.get("parameters"), "search_space.parameters")
+    if tuple(parameters) != FINAL_SCREENING_PARAMETERS:
+        raise ValueError("PRIMARY search-space parameters must exactly match D035")
+    if payload.get("candidate_budget_per_method") != 30:
+        raise ValueError("PRIMARY Wave A must use 30 candidate slots per method")
+    wave_a = _require_mapping(payload.get("wave_a"), "wave_a")
+    wave_b = _require_mapping(payload.get("wave_b"), "wave_b")
+    if (
+        wave_a.get("seed_count") != 3
+        or wave_a.get("seeds") != [88408573, 1418705027, 642754166]
+        or wave_a.get("candidate_budget_per_method") != 30
+        or wave_a.get("physical_observations") != 393
+    ):
+        raise ValueError("PRIMARY Wave A must use the frozen 30x3 design")
+    if (
+        wave_b.get("status") != "reserved-not-authorized"
+        or wave_b.get("seeds") != [1902413987, 740267717]
+        or wave_b.get("physical_observations") != 262
+    ):
+        raise ValueError("PRIMARY Wave B must preserve the two untouched D025 seeds")
+    initial = _require_mapping(payload.get("shared_bo_initial_design"), "shared_bo_initial_design")
+    if initial.get("status") != "frozen" or initial.get("size") != 12:
+        raise ValueError("PRIMARY must freeze the shared 12-point BO initial design")
+    schedule = _require_mapping(payload.get("execution_schedule"), "execution_schedule")
+    if (
+        schedule.get("schedule_seed") != 1432590420
+        or schedule.get("schedule_sha256")
+        != "7f1f467e0e1090a9d8e972b06d9ed1efadef8f130f9bc3a2762c7451ddccb7f4"
+        or schedule.get("default_controls_per_seed") != 5
+    ):
+        raise ValueError("PRIMARY must use the frozen Wave A schedule and five controls per seed")
+    reference = _require_mapping(
+        payload.get("hypervolume_reference_point"), "hypervolume_reference_point"
+    )
+    if reference.get("status") != "frozen" or reference.get("value") != [0.0, -40.0]:
+        raise ValueError("PRIMARY hypervolume reference point must be frozen at (0, -40)")
+    constraint_audit = _require_mapping(
+        payload.get("learned_constraint_audit"), "learned_constraint_audit"
+    )
+    if (
+        constraint_audit.get("status") != "fallback-reframe-approved"
+        or constraint_audit.get("learned_constraint_used") is not False
+    ):
+        raise ValueError("PRIMARY must use the D036 no-learned-constraint fallback")
+
+
+def _validate_screening_amendment(payload: dict[str, Any], role: str) -> None:
+    if role != "CALIBRATION":
+        raise ValueError("screening interpretation amendment must remain CALIBRATION evidence")
+    source = _require_mapping(payload.get("source"), "source")
+    if (
+        source.get("decision") != "D033"
+        or source.get("required_outcome") != "BLOCKED_DRIFT"
+        or source.get("valid_sobol_measurements") != 32
+        or source.get("valid_default_controls") != 3
+        or source.get("analysis_sha256")
+        != "5a51b941f1511b8f55962a3e5fcf279c71b98e89e94e72db4d5b7b7b2b82b1dd"
+    ):
+        raise ValueError("screening interpretation amendment must preserve D033 lineage")
+    amendment = _require_mapping(payload.get("amendment"), "amendment")
+    if (
+        amendment.get("decision") != "D035"
+        or amendment.get("does_not_rewrite_d033") is not True
+        or amendment.get("does_not_claim_d033_passed") is not True
+        or amendment.get("oat_waived") is not True
+        or amendment.get("additional_screening_observations") != 0
+        or amendment.get("screening_phase_treated_as_final") is not True
+    ):
+        raise ValueError("screening interpretation amendment differs from D035")
+    final = _require_mapping(payload.get("final_search_space"), "final_search_space")
+    if final.get("parameter_order") != list(FINAL_SCREENING_PARAMETERS):
+        raise ValueError("D035 must freeze the exact eight-parameter order")
+    parameters = _require_mapping(final.get("parameters"), "final_search_space.parameters")
+    if tuple(parameters) != FINAL_SCREENING_PARAMETERS:
+        raise ValueError("D035 must freeze exactly eight parameters")
 
 
 def _validate_screening(payload: dict[str, Any], role: str, status: str) -> None:
@@ -247,6 +337,17 @@ def _validate_temporal_stability(payload: dict[str, Any], role: str, status: str
         raise ValueError("temporal-stability runtime must be accepted before readiness")
     if status == "ready" and payload.get("execution_ready") is not True:
         raise ValueError("ready temporal stability requires its durable runner")
+    retirement = _require_mapping(payload.get("retirement"), "retirement")
+    if (
+        status != "blocked"
+        or payload.get("execution_ready") is not False
+        or retirement.get("decision") != "D035"
+        or retirement.get("retired_without_execution") is not True
+        or retirement.get("campaign_created") is not False
+        or retirement.get("observations_executed") != 0
+        or retirement.get("permanently_prohibit_launch") is not True
+    ):
+        raise ValueError("D034 must remain retired and non-executable under D035")
 
 
 def validate_manifest(payload: dict[str, Any], *, path: Path | None = None) -> ProtocolManifest:
@@ -289,6 +390,8 @@ def validate_manifest(payload: dict[str, Any], *, path: Path | None = None) -> P
         _validate_screening_remediation(payload)
     if stage == "post-screening-temporal-stability":
         _validate_temporal_stability(payload, role, status)
+    if stage == "screening-interpretation-amendment":
+        _validate_screening_amendment(payload, role)
     if role == "PRIMARY":
         _validate_primary(payload, status)
     return ProtocolManifest(

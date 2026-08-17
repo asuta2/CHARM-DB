@@ -131,6 +131,7 @@ def temporal_stability_design_summary(
     return {
         "status": payload["status"],
         "execution_ready": payload["execution_ready"],
+        "retirement": payload["retirement"],
         "manifest_sha256": manifest_sha256,
         "source_analysis_sha256": payload["source"]["analysis_sha256"],
         "observations": payload["design"]["observations"],
@@ -173,6 +174,18 @@ def temporal_stability_readiness(
     manifest_path: Path = TEMPORAL_STABILITY_MANIFEST,
 ) -> dict[str, Any]:
     manifest_sha256, payload = temporal_stability_manifest_payload(manifest_path)
+    retirement = dict(payload.get("retirement") or {})
+    if retirement.get("permanently_prohibit_launch") is True:
+        return {
+            "ready": False,
+            "retired": True,
+            "decision": retirement.get("decision"),
+            "reason": retirement.get("reason"),
+            "manifest_sha256": manifest_sha256,
+            "source_recovery_block_id": str(SOURCE_RECOVERY_BLOCK_ID),
+            "source_analysis_sha256": SOURCE_ANALYSIS_SHA256,
+            "observations_executed": retirement.get("observations_executed"),
+        }
     source = _source_state(settings)
     with connect(settings.control_dsn) as conn, conn.cursor() as cur:
         cur.execute(
@@ -227,6 +240,9 @@ def create_temporal_stability_plan(
     settings: Settings,
     manifest_path: Path = TEMPORAL_STABILITY_MANIFEST,
 ) -> uuid.UUID:
+    _, payload = temporal_stability_manifest_payload(manifest_path)
+    if payload["retirement"]["permanently_prohibit_launch"] is True:
+        raise ValueError("D034 was retired without execution by D035 and cannot be launched")
     readiness = temporal_stability_readiness(settings, manifest_path)
     if readiness["ready"] is not True:
         raise ValueError("temporal-stability execution is blocked until every gate passes")

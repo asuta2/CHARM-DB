@@ -89,9 +89,80 @@ drift-limited eight-knob space is frozen. Primary Wave A is 30 candidates per
 method over three seeds, with two seeds reserved for a possible later Wave B.
 D036 freezes the honest Bayesian-method reframe as throughput qLogNEI versus
 multi-objective qLogNParEGO/qLogNEHVI under common hard gates. Primary execution
-remains blocked on the durable interleaved runner. D037 hash-freezes the
-deterministic 393-observation Wave A schedule; no PRIMARY campaign is authorized
-yet.
+was then blocked on the durable interleaved runner. D037 hash-freezes the
+deterministic 393-observation Wave A schedule. D038 implements migration 037,
+the eight-dimensional runner, isolated BO lineage, retained infrastructure
+attempts, and drift-adjusted analysis; the fixed candidate design is separately
+frozen at `6664b06c…19c143e`. D039 applied migrations 037–038, passed the live
+schema lifecycle and complete integration suite, added a resumable whole-Wave-A
+driver, copied runtime evidence to `C:\CHARMDB-ARTIFACTS\v2`, and verified more
+than 50 GiB free with a clean target. D040 closed the restore-reliability gate:
+the first prepared soak is retained as terminal `FAILED` evidence and a
+superseding soak passed 15/15 consecutive restore/fingerprint cycles. D040 also
+made the frozen evidence specification executable, adding 30-slot logical
+trajectories, completed method and safety tables, nondominated-front extraction,
+six deterministic SVG figures, a hashed UTF-8 report tree, and a synthetic
+393-slot rehearsal that proves the whole path before any real observation. The
+manifest is `ready` with `execution_ready=true` after D041 recorded P007. D042
+hardened durable-action lease renewal after session 01 lost one observation to a
+heartbeat failure; no observation was altered. D044 audits the completed session
+02: positions 15--147 all completed, including the attempt-2 recovery of
+position 15 and all 54 first-seed adaptive BO slots. The single campaign
+`b0619879-c807-4ee3-859e-2c2dbec9934e` remains `RUNNING` at 147/393 completed
+observations. Those completed slots have passed candidate restores, verified raw
+artifacts, frozen-plan conformance, valid metrics, and valid adaptive training
+lineage; the target is clean. D045 then audited session 03: following an
+environment-level DLL-policy startup incident that created no observation, the
+rerun completed positions 148--175. The campaign is `RUNNING` at 175/393
+completed observations (seed 1 complete; seed 2 at 44/131), with 176 append-only
+attempts, 58 completed adaptive proposals, and 1,156 valid lineage rows. The
+ledger remains partial, so no method result is yet supported. D046 then audited
+session 04: positions 176--208 completed on attempt 1 in 33 clean durable steps.
+The campaign is `RUNNING` at 208/393 (seed 2 at 77/131), with 209 append-only
+attempts, 77 completed adaptive proposals, 1,460 valid lineage rows, and 208
+artifact records independently verified by path, size, and SHA-256.
+
+D047 then audited session 05: positions 209--242 completed on attempt 1 in 34
+clean durable steps. The campaign is `RUNNING` at 242/393 (seed 2 at 111/131),
+with 243 append-only attempts, 96 completed adaptive proposals, 1,884 valid
+lineage rows, and 242 artifact records independently verified by path, size,
+and SHA-256.
+
+D048 audited terminal Wave A execution. Session 06 completed positions 243--260
+before its deadline, and the operator continuation completed positions 261--393
+and emitted `observations-complete` at 2026-08-31 09:40 CEST. The primary block
+is `OBSERVATIONS_COMPLETE`; the campaign is `PAUSED`; all three seeds and all
+393 immutable slots are complete. The 394-attempt ledger retains 393 completed
+attempts and the single D042 infrastructure failure. All 393 restores, metrics,
+artifact hashes, frozen schedule fields, fixed candidates, and 3,321 lineage
+rows passed the terminal audit. Wave A execution is complete but its frozen
+analysis and report have not run, so no comparative method or thesis outcome is
+yet authorized.
+
+D049 executed the frozen fail-closed terminal sequence on 2026-08-31. The block
+is `ANALYZED`, the campaign is `STOPPED`, and the outcome is
+`COMPLETE_WITH_DRIFT_FLAGS`: seed 88408573 raised the transparency-only 5% TPS
+drift flag; the other two seeds are unflagged; nothing was discarded. Under the
+frozen drift-adjusted contrasts, all three BO methods hold throughput parity
+with the contemporaneous default (mean -0.26% to -0.49%) while improving mean
+p99 by 1.02-1.20 ms and dominating the local default in 19-21 of 30 candidates
+per seed; random/Sobol average 7.28-7.38% below the local default's throughput
+and dominate in only 2-6 of 30. The multi-objective methods lead hypervolume
+and minimum p99 in every seed. The improvement-over-default claim is
+latency-side/Pareto expansion at throughput parity, not TPS dominance.
+
+D050 adjudicated the seed-1 showcase proposals against the full three-seed
+results and registered the secondary display set S1-S6/S8 with frozen formulas
+in `v2/docs/evidence-and-figures.md`; the wall-clock efficiency curve was rejected
+because per-slot cost is method-flat. All showcases are exploratory; the five
+frozen endpoints and the deterministic report remain the primary evidence.
+
+D051 implements those frozen displays as an authenticated offline renderer and
+executes it against the unchanged D049 export. The deterministic 19-file tree is
+under `primary-comparison/report-secondary/` (index SHA-256
+`b3f0f6c0f661be12871d8744db2ba90ee93f386903070e0a879c4c2ee3a7aabc`); it contains
+nine CSV tables, eight SVG displays, and an explicitly exploratory Markdown report.
+The next v2 work is Multi-fidelity Phase A pre-registration (P009).
 
 Agents may run test suites. Agents must never run experiment-arm benchmarks: they must stop at a
 durable checkpoint and provide the user the exact arm command, prerequisites, expected duration,

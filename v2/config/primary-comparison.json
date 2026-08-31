@@ -2,18 +2,19 @@
   "protocol_id": "thesis-protocol-v2",
   "schema_version": 1,
   "stage": "primary-comparison",
-  "status": "draft",
+  "status": "ready",
   "evidence_role": "PRIMARY",
   "operator_triggered": true,
   "artifact_root": "artifacts-newpc/v2/primary-comparison",
   "candidate_restore_gate": "required",
-  "execution_ready": false,
+  "execution_ready": true,
   "prerequisites": {
     "benchmark_profile_frozen": true,
     "candidate_restore_policy_frozen": true,
     "default_reference_passed": true,
     "parameter_screening_complete": true,
-    "primary_protocol_frozen": true
+    "primary_protocol_frozen": true,
+    "durable_primary_runner_implemented": true
   },
   "screening_basis": {
     "decision": "D035",
@@ -23,6 +24,18 @@
     "d034_retired_without_execution": true
   },
   "benchmark_profile_id": "scale500-c32-w600-f3-600-v1",
+  "benchmark_profile": {
+    "id": "scale500-c32-w600-f3-600-v1",
+    "scale_factor": 500,
+    "warmup_seconds": 600,
+    "measurement_seconds": 600,
+    "concurrency": 32,
+    "client_threads": 4,
+    "restore_mechanism": "logical-restore",
+    "candidate_restore_before_every_physical_observation": true,
+    "unconditional_restart_before_every_measurement": true,
+    "pgbench_maintenance_policy": "canonical-baseline-only-no-vacuum"
+  },
   "search_methods": [
     "random",
     "sobol",
@@ -52,6 +65,16 @@
       "max_parallel_workers_per_gather": {"type": "integer", "lower": 0, "upper": 4}
     }
   },
+  "postgresql_default_configuration": {
+    "shared_buffers": "16384",
+    "effective_cache_size": "524288",
+    "work_mem": "4096",
+    "checkpoint_timeout": "300",
+    "checkpoint_completion_target": "0.9",
+    "max_wal_size": "1024",
+    "random_page_cost": "4",
+    "max_parallel_workers_per_gather": "2"
+  },
   "candidate_budget_per_method": 30,
   "wave_a": {
     "status": "frozen-design-not-execution-ready",
@@ -77,6 +100,8 @@
   "shared_bo_initial_design": {
     "status": "frozen",
     "size": 12,
+    "generator": "scrambled-sobol-per-seed-sha256-derived-seed",
+    "candidate_design_sha256": "6664b06c40a484c590b7c66cadbbce9ebad77a5dafbaa86d8bd1ba58719c143e",
     "size_rule": "max(d + 1, ceil(0.30 * candidate_budget))",
     "sharing_rule": "Within each seed, evaluate the same 12 initial configurations once and share their observations across all three Bayesian methods; each Bayesian method then receives 18 adaptive acquisition slots."
   },
@@ -111,6 +136,65 @@
     "below_0_20_observation_role": "postgresql_default_control",
     "conclusion": "Calibration does not provide a defensible feasible/infeasible candidate boundary. The five-method comparison is reframed as random, Sobol, throughput-only qLogNEI, multi-objective qLogNParEGO, and multi-objective qLogNEHVI under identical hard safety gates."
   },
+  "hard_safety_gates": {
+    "status": "machine-readable",
+    "apply_equally_to_all_methods": true,
+    "gates": [
+      {"id": "manifest-and-preflight-valid", "stage": "before-campaign"},
+      {"id": "configuration-within-frozen-bounds", "stage": "before-trial"},
+      {"id": "target-host-allowlisted", "stage": "before-trial"},
+      {"id": "resource-snapshot-within-thresholds", "stage": "before-and-after-trial"},
+      {"id": "candidate-restore-fingerprint-passed", "stage": "before-measurement"},
+      {"id": "unconditional-postgresql-restart", "stage": "before-measurement"},
+      {"id": "active-configuration-verified", "stage": "before-measurement"},
+      {"id": "complete-benchmark-output", "stage": "after-measurement"},
+      {"id": "rollback-and-target-health-verified", "stage": "after-measurement"}
+    ],
+    "objective_validity": {
+      "benchmark_failures_must_equal": 0,
+      "p99_is_objective_not_constraint": true,
+      "no_learned_constraint": true
+    }
+  },
+  "pre_campaign_environment_gates": {
+    "status": "required",
+    "minimum_consecutive_restore_passes": 15,
+    "primary_schema_migration": "037_v2_primary_comparison",
+    "restore_reliability_schema_migration": "038_v2_primary_restore_reliability",
+    "artifact_runtime_directory_must_be_outside_onedrive": true,
+    "minimum_artifact_free_bytes": 53687091200,
+    "target_must_have_zero_active_campaigns": true
+  },
+  "infrastructure_retry_policy": {
+    "status": "frozen",
+    "frozen_by": "P007",
+    "maximum_trials_per_slot": 3,
+    "worker_attempts_per_trial": 1,
+    "retryable_failure_types": [
+      "DATASET_RESTORE_FAILED",
+      "BASELINE_FINGERPRINT_FAILED"
+    ],
+    "candidate_reused_on_retry": true,
+    "new_proposal_on_retry": false,
+    "optimizer_training_on_retryable_failure": false,
+    "candidate_budget_consumed_by_retry": false,
+    "on_exhaustion": "pause-campaign-preserve-ledger-and-require-human-decision"
+  },
+  "drift_interpretation": {
+    "status": "frozen",
+    "frozen_by": "P007",
+    "controls": 15,
+    "primary_adjustment": "within-seed-piecewise-linear-interpolation-of-bracketing-default-controls",
+    "throughput_contrast": "candidate_tps/control_tps_minus_one",
+    "p99_contrast": "candidate_p99_ms_minus_control_p99_ms",
+    "transparency_flags": {
+      "maximum_absolute_within_seed_fitted_tps_change_relative": 0.05,
+      "maximum_absolute_within_seed_fitted_p99_change_ms": 5.0
+    },
+    "flag_is_campaign_killing": false,
+    "report_raw_and_adjusted_results": true,
+    "global_default_constant_for_primary_contrasts": false
+  },
   "runtime": {
     "basis_seconds_per_physical_observation": 1662.727767,
     "wave_a_physical_observations": 393,
@@ -122,7 +206,18 @@
     "includes_retries_or_operator_gaps": false,
     "wave_a_budget_accepted_by": "D035"
   },
-  "unresolved_decisions": [
-    "Implement and validate the durable Wave A primary runner and its infrastructure-retry policy before campaign creation."
-  ]
+  "p007_confirmation": {
+    "decision": "D041",
+    "date": "2026-08-21",
+    "reported_by": "operator",
+    "verbatim_supervisor_statement_on_file": false,
+    "confirmed_items": [
+      "shared 12-point scrambled-Sobol Bayesian initialization measured once per seed and shared across all three Bayesian methods",
+      "temporally interleaved execution schedule at seed 1432590420 with schedule SHA-256 7f1f467e0e1090a9d8e972b06d9ed1efadef8f130f9bc3a2762c7451ddccb7f4",
+      "five PostgreSQL-default controls per seed at within-seed positions 1, 34, 66, 99, and 131 as a blocked reference consuming no candidate slot",
+      "bounded infrastructure-retry policy of at most three one-attempt trials per slot for restore and baseline-fingerprint failures, with no optimizer training and no candidate-budget consumption",
+      "non-killing within-seed drift interpretation using piecewise-linear control interpolation with 5 percent TPS and 5 ms p99 transparency flags"
+    ]
+  },
+  "unresolved_decisions": []
 }

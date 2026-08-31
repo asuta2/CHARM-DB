@@ -201,6 +201,7 @@ def _target_safety(
     settings: Settings,
     *,
     permitted_campaign_id: uuid.UUID | None = None,
+    require_idle: bool = True,
 ) -> dict[str, Any]:
     with connect(settings.control_dsn) as conn, conn.cursor() as cur:
         cur.execute(
@@ -253,7 +254,7 @@ def _target_safety(
         )
         if int(safety[name]) != 0
     }
-    if unsafe:
+    if unsafe and require_idle:
         raise RuntimeError(f"manifest preflight requires an idle safe target: {unsafe}")
     return safety
 

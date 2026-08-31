@@ -1111,6 +1111,16 @@ def claim_next_trial(
     return lease, bool(row["stale"])
 
 
+class TrialLeaseLost(RuntimeError):
+    """The lease is provably no longer held by this worker.
+
+    Raised only when the heartbeat statement reached the control database and
+    matched no row, meaning the lease expired or another owner took it. A
+    failure to reach the control database is a transient error and must not be
+    reported as a lost lease.
+    """
+
+
 def heartbeat(settings: Settings, lease: TrialLease, lease_seconds: int = 30) -> datetime:
     with connect(settings.control_dsn) as conn, conn.cursor() as cur:
         cur.execute(
@@ -1124,7 +1134,7 @@ def heartbeat(settings: Settings, lease: TrialLease, lease_seconds: int = 30) ->
         )
         row = cur.fetchone()
         if row is None:
-            raise RuntimeError("trial lease was lost before heartbeat")
+            raise TrialLeaseLost("trial lease was lost before heartbeat")
         conn.commit()
         return row["lease_expires_at"]  # type: ignore[no-any-return]
 
@@ -1266,15 +1276,32 @@ def _run_action(
     heartbeat(settings, lease, lease.lease_seconds)
     stop_heartbeat = Event()
     heartbeat_errors: list[Exception] = []
+    absorbed: list[Exception] = []
     interval = max(0.1, min(5.0, lease.lease_seconds / 3))
 
     def renew_lease() -> None:
+        """Keep the lease current, tolerating transient control-database errors.
+
+        A single failed renewal must not destroy a multi-minute durable action.
+        The lease only becomes unsafe once a full ``lease_seconds`` window has
+        passed with no successful renewal, so that is the give-up rule. A
+        provably lost lease still fails immediately, because continuing to work
+        under someone else's claim would corrupt the ledger.
+        """
+        last_success = time.monotonic()
         while not stop_heartbeat.wait(interval):
             try:
                 heartbeat(settings, lease, lease.lease_seconds)
-            except Exception as error:
+            except TrialLeaseLost as error:
                 heartbeat_errors.append(error)
                 return
+            except Exception as error:
+                absorbed.append(error)
+                if time.monotonic() - last_success >= lease.lease_seconds:
+                    heartbeat_errors.append(error)
+                    return
+            else:
+                last_success = time.monotonic()
 
     heartbeat_thread = Thread(
         target=renew_lease,
@@ -1288,9 +1315,13 @@ def _run_action(
         stop_heartbeat.set()
         heartbeat_thread.join()
     if heartbeat_errors:
+        cause = heartbeat_errors[0]
         raise RuntimeError(
-            f"trial lease heartbeat failed during action {state}"
-        ) from heartbeat_errors[0]
+            f"trial lease heartbeat failed during action {state} after "
+            f"{len(absorbed)} transient error(s) within a "
+            f"{lease.lease_seconds}-second lease window: "
+            f"{type(cause).__name__}: {cause}"
+        ) from cause
     _record_action_complete(settings, lease, state, result)
     return result
 

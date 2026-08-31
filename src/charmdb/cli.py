@@ -84,12 +84,40 @@ from charmdb.v2.default_reference import (
     export_default_reference_analysis,
     run_default_reference_next,
 )
+from charmdb.v2.evidence_exports import export_v2_evidence_ledgers
+from charmdb.v2.evidence_integrity import build_evidence_manifest
 from charmdb.v2.physical_archive import (
     create_physical_archive,
     physical_archive_dict,
     physical_archive_history,
 )
-from charmdb.v2.primary_design import PRIMARY_MANIFEST, primary_design_summary
+from charmdb.v2.primary_design import (
+    PRIMARY_MANIFEST,
+    export_primary_design,
+    primary_design_summary,
+)
+from charmdb.v2.primary_execution import (
+    PRIMARY_STAGE,
+    analyze_primary,
+    create_primary_plan,
+    export_primary_analysis,
+    export_primary_report,
+    primary_history,
+    primary_readiness,
+    primary_step_dict,
+    run_primary_next,
+)
+from charmdb.v2.primary_rehearsal import (
+    DEFAULT_REHEARSAL_DIRNAME,
+    REHEARSAL_SCENARIOS,
+    run_analysis_rehearsal,
+)
+from charmdb.v2.primary_reliability import (
+    create_primary_restore_soak,
+    primary_restore_soak_history,
+    primary_restore_soak_readiness,
+    run_primary_restore_soak_next,
+)
 from charmdb.v2.restore_capability import (
     assess_restore_capabilities,
     capability_assessment_dict,
@@ -143,6 +171,7 @@ from charmdb.v2.screening_recovery import (
     target_database_remediation_history,
     target_database_remediation_readiness,
 )
+from charmdb.v2.secondary_reporting import export_secondary_report
 from charmdb.v2.temporal_stability import (
     TEMPORAL_STABILITY_MANIFEST,
     temporal_stability_design_summary,
@@ -935,6 +964,221 @@ def v2_primary_design_validate_command(
     ] = PRIMARY_MANIFEST,
 ) -> None:
     typer.echo(json.dumps(primary_design_summary(manifest), indent=2))
+
+
+@app.command("v2-primary-design-export")
+def v2_primary_design_export_command(
+    output: Path | None = None,
+    manifest: Annotated[
+        Path, typer.Option(exists=True, file_okay=True, dir_okay=False, readable=True)
+    ] = PRIMARY_MANIFEST,
+) -> None:
+    typer.echo(json.dumps(export_primary_design(manifest, output), indent=2))
+
+
+@app.command("v2-primary-validate")
+def v2_primary_validate_command(
+    preflight_id: uuid.UUID = FROZEN_PREFLIGHT_ID,
+    manifest: Annotated[
+        Path, typer.Option(exists=True, file_okay=True, dir_okay=False, readable=True)
+    ] = PRIMARY_MANIFEST,
+) -> None:
+    typer.echo(
+        json.dumps(
+            primary_readiness(get_settings(), preflight_id, manifest),
+            indent=2,
+            default=str,
+        )
+    )
+
+
+@app.command("v2-primary-restore-soak-validate")
+def v2_primary_restore_soak_validate_command(
+    manifest: Annotated[
+        Path, typer.Option(exists=True, file_okay=True, dir_okay=False, readable=True)
+    ] = PRIMARY_MANIFEST,
+) -> None:
+    typer.echo(
+        json.dumps(
+            primary_restore_soak_readiness(get_settings(), manifest),
+            indent=2,
+            default=str,
+        )
+    )
+
+
+@app.command("v2-primary-restore-soak-create")
+def v2_primary_restore_soak_create_command(
+    repetitions: int = 15,
+    manifest: Annotated[
+        Path, typer.Option(exists=True, file_okay=True, dir_okay=False, readable=True)
+    ] = PRIMARY_MANIFEST,
+) -> None:
+    restore_soak_id = create_primary_restore_soak(get_settings(), repetitions, manifest)
+    typer.echo(
+        json.dumps(
+            {
+                "restore_soak_id": str(restore_soak_id),
+                "status": "PLANNED",
+                "required_repetitions": repetitions,
+            },
+            indent=2,
+        )
+    )
+
+
+@app.command("v2-primary-restore-soak-run")
+def v2_primary_restore_soak_run_command(
+    restore_soak_id: uuid.UUID,
+    max_steps: int = 0,
+    manifest: Annotated[
+        Path, typer.Option(exists=True, file_okay=True, dir_okay=False, readable=True)
+    ] = PRIMARY_MANIFEST,
+) -> None:
+    if max_steps < 0:
+        raise typer.BadParameter("max-steps cannot be negative")
+    completed = 0
+    while max_steps == 0 or completed < max_steps:
+        step = run_primary_restore_soak_next(get_settings(), restore_soak_id, manifest)
+        typer.echo(json.dumps(step, default=str))
+        completed += 1
+        if step["action"] in {"soak-complete", "already-terminal"}:
+            break
+
+
+@app.command("v2-primary-restore-soak-history")
+def v2_primary_restore_soak_history_command(restore_soak_id: uuid.UUID) -> None:
+    typer.echo(
+        json.dumps(
+            primary_restore_soak_history(get_settings(), restore_soak_id),
+            indent=2,
+            default=str,
+        )
+    )
+
+
+@app.command("v2-primary-create")
+def v2_primary_create_command(
+    preflight_id: uuid.UUID = FROZEN_PREFLIGHT_ID,
+    manifest: Annotated[
+        Path, typer.Option(exists=True, file_okay=True, dir_okay=False, readable=True)
+    ] = PRIMARY_MANIFEST,
+) -> None:
+    campaign_id = create_primary_plan(get_settings(), preflight_id, manifest)
+    typer.echo(json.dumps({"campaign_id": str(campaign_id)}, indent=2))
+
+
+@app.command("v2-primary-run-next")
+def v2_primary_run_next_command(
+    campaign_id: uuid.UUID,
+    owner: str = "v2-primary",
+    lease_seconds: int = 600,
+) -> None:
+    typer.echo(
+        json.dumps(
+            primary_step_dict(
+                run_primary_next(
+                    get_settings(), campaign_id, owner=owner, lease_seconds=lease_seconds
+                )
+            ),
+            indent=2,
+            default=str,
+        )
+    )
+
+
+@app.command("v2-primary-run")
+def v2_primary_run_command(
+    campaign_id: uuid.UUID,
+    owner: str = "v2-primary",
+    lease_seconds: int = 600,
+    max_steps: int = 0,
+) -> None:
+    """Run durable primary slots until completion, infrastructure pause, or a step bound."""
+    if max_steps < 0:
+        raise typer.BadParameter("max-steps cannot be negative")
+    completed = 0
+    while max_steps == 0 or completed < max_steps:
+        step = run_primary_next(
+            get_settings(), campaign_id, owner=owner, lease_seconds=lease_seconds
+        )
+        payload = primary_step_dict(step)
+        typer.echo(json.dumps(payload, default=str))
+        completed += 1
+        if step.action in {"observations-complete", "infrastructure-paused"}:
+            break
+
+
+@app.command("v2-primary-history")
+def v2_primary_history_command(campaign_id: uuid.UUID) -> None:
+    typer.echo(json.dumps(primary_history(get_settings(), campaign_id), indent=2, default=str))
+
+
+@app.command("v2-primary-analyze")
+def v2_primary_analyze_command(campaign_id: uuid.UUID) -> None:
+    typer.echo(json.dumps(analyze_primary(get_settings(), campaign_id), indent=2, default=str))
+
+
+@app.command("v2-primary-export")
+def v2_primary_export_command(campaign_id: uuid.UUID, output: Path | None = None) -> None:
+    typer.echo(json.dumps(export_primary_analysis(get_settings(), campaign_id, output), indent=2))
+
+
+@app.command("v2-primary-report")
+def v2_primary_report_command(campaign_id: uuid.UUID, output: Path | None = None) -> None:
+    """Render the frozen Wave A tables and figures from a terminal analysis."""
+    typer.echo(json.dumps(export_primary_report(get_settings(), campaign_id, output), indent=2))
+
+
+@app.command("v2-primary-report-secondary")
+def v2_primary_report_secondary_command(
+    source: Path | None = None, output: Path | None = None
+) -> None:
+    """Render D050 exploratory showcases from the terminal Wave A export."""
+    artifact_root = (get_settings().artifact_dir / PRIMARY_STAGE).resolve()
+    source_path = (source or artifact_root / "primary-analysis.json").resolve()
+    output_dir = (output or artifact_root / "report-secondary").resolve()
+    for label, selected in (("source", source_path), ("output", output_dir)):
+        if selected != artifact_root and artifact_root not in selected.parents:
+            raise typer.BadParameter(
+                f"secondary report {label} must stay under the primary artifact root"
+            )
+    typer.echo(json.dumps(export_secondary_report(source_path, output_dir), indent=2))
+
+
+@app.command("v2-primary-analysis-rehearsal")
+def v2_primary_analysis_rehearsal_command(output: Path | None = None) -> None:
+    """Prove the Wave A analysis and report pipeline on synthetic ledgers.
+
+    This is result-blind INFRASTRUCTURE work: it never reads or creates a
+    primary campaign, never contacts the target database, and writes only
+    clearly labelled synthetic artifacts.
+    """
+    settings = get_settings()
+    directory = output or settings.artifact_dir / PRIMARY_STAGE / DEFAULT_REHEARSAL_DIRNAME
+    summary = run_analysis_rehearsal(directory, REHEARSAL_SCENARIOS)
+    typer.echo(json.dumps(summary, indent=2, default=str))
+    if not summary["passed"]:
+        raise typer.Exit(code=1)
+
+
+@app.command("v2-evidence-manifest")
+def v2_evidence_manifest_command(root: Path | None = None, output: Path | None = None) -> None:
+    artifact_root = get_settings().artifact_dir
+    selected_root = root or artifact_root
+    typer.echo(
+        json.dumps(
+            build_evidence_manifest(selected_root, output, artifact_root=artifact_root),
+            indent=2,
+        )
+    )
+
+
+@app.command("v2-evidence-ledgers-export")
+def v2_evidence_ledgers_export_command(output: Path | None = None) -> None:
+    typer.echo(
+        json.dumps(export_v2_evidence_ledgers(get_settings(), output), indent=2, default=str)
+    )
 
 
 @app.command("knobs-discover")

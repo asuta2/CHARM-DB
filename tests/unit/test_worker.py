@@ -1,4 +1,6 @@
+import time
 import uuid
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from itertools import pairwise
 from threading import Event
@@ -58,6 +60,134 @@ def test_durable_action_renews_lease_until_operation_finishes(
     assert result == {"complete": True}
     assert heartbeat_calls >= 2
     assert completed == [result]
+
+
+def _lease(lease_seconds: int) -> worker.TrialLease:
+    return worker.TrialLease(
+        trial_id=uuid.uuid4(),
+        campaign_id=uuid.uuid4(),
+        state="RESTORING_CANDIDATE_DATASET",
+        workflow_kind="V2_TUNED_BENCHMARK",
+        payload={},
+        attempt_count=1,
+        max_attempts=1,
+        owner="unit-worker",
+        token=uuid.uuid4(),
+        expires_at=datetime.now(UTC) + timedelta(seconds=lease_seconds),
+        lease_seconds=lease_seconds,
+    )
+
+
+def _run_with_heartbeat(
+    monkeypatch: pytest.MonkeyPatch,
+    lease: worker.TrialLease,
+    renewal: Callable[[int], datetime],
+    operation: Callable[[], dict[str, object]],
+) -> dict[str, object]:
+    """Drive `_run_action` with a scripted heartbeat.
+
+    `_run_action` heartbeats once synchronously as a fail-fast pre-check before
+    starting the renewal thread, so `renewal` receives 1 for that call and 2+
+    for background renewals.
+    """
+    calls = 0
+
+    def dispatch(*_args: object, **_kwargs: object) -> datetime:
+        nonlocal calls
+        calls += 1
+        return renewal(calls)
+
+    monkeypatch.setattr(worker, "_record_action_start", lambda *_args: False)
+    monkeypatch.setattr(worker, "heartbeat", dispatch)
+    monkeypatch.setattr(worker, "_record_action_complete", lambda *_args: None)
+    return worker._run_action(  # type: ignore[arg-type]
+        object(), lease, lease.state, operation
+    )
+
+
+def _renewed(seconds: int) -> datetime:
+    return datetime.now(UTC) + timedelta(seconds=seconds)
+
+
+def test_transient_heartbeat_errors_do_not_destroy_a_durable_action(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A control-database blip must not throw away a multi-minute observation.
+
+    This is the D042 regression case: one transient error previously killed the
+    renewal thread permanently and failed the entire trial.
+    """
+    lease = _lease(3)
+    recovered = Event()
+
+    def renewal(call: int) -> datetime:
+        if call in {2, 3}:
+            raise OSError("connection timeout expired")
+        if call >= 4:
+            recovered.set()
+        return _renewed(3)
+
+    def operation() -> dict[str, object]:
+        assert recovered.wait(timeout=15)
+        return {"restored": True}
+
+    assert _run_with_heartbeat(monkeypatch, lease, renewal, operation) == {"restored": True}
+
+
+def test_provably_lost_lease_still_fails_immediately(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Continuing under another owner's claim must never be tolerated."""
+    lease = _lease(3)
+    observed = Event()
+
+    def renewal(call: int) -> datetime:
+        if call == 1:
+            return _renewed(3)
+        observed.set()
+        raise worker.TrialLeaseLost("trial lease was lost before heartbeat")
+
+    def operation() -> dict[str, object]:
+        assert observed.wait(timeout=15)
+        return {"restored": True}
+
+    with pytest.raises(RuntimeError) as error:
+        _run_with_heartbeat(monkeypatch, lease, renewal, operation)
+
+    assert "trial lease heartbeat failed" in str(error.value)
+    assert "TrialLeaseLost" in str(error.value)
+    assert isinstance(error.value.__cause__, worker.TrialLeaseLost)
+
+
+def test_persistent_heartbeat_failure_beyond_the_lease_window_fails_with_its_cause(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Once a full lease window passes with no renewal the lease is unsafe."""
+    lease = _lease(1)
+    attempted = Event()
+
+    def renewal(call: int) -> datetime:
+        if call == 1:
+            return _renewed(1)
+        attempted.set()
+        raise OSError("control database is unreachable")
+
+    def operation() -> dict[str, object]:
+        assert attempted.wait(timeout=15)
+        time.sleep(2.0)
+        return {"restored": True}
+
+    with pytest.raises(RuntimeError) as error:
+        _run_with_heartbeat(monkeypatch, lease, renewal, operation)
+
+    message = str(error.value)
+    assert "transient error(s) within a 1-second lease window" in message
+    assert "control database is unreachable" in message
+    assert isinstance(error.value.__cause__, OSError)
+
+
+def test_lost_lease_error_stays_a_runtime_error_for_existing_callers() -> None:
+    assert issubclass(worker.TrialLeaseLost, RuntimeError)
 
 
 def test_terminal_worker_hook_attempts_search_budget_reconciliation(

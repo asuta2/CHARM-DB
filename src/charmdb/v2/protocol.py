@@ -115,6 +115,27 @@ def _validate_primary(payload: dict[str, Any], status: str) -> None:
             raise ValueError(f"PRIMARY manifest cannot be ready before gates pass: {failed}")
         if payload.get("execution_ready") is not True:
             raise ValueError("PRIMARY manifest cannot be ready before its durable runner passes")
+        retry = _require_mapping(
+            payload.get("infrastructure_retry_policy"), "infrastructure_retry_policy"
+        )
+        drift = _require_mapping(payload.get("drift_interpretation"), "drift_interpretation")
+        if retry.get("status") != "frozen" or drift.get("status") != "frozen":
+            raise ValueError("PRIMARY execution requires supervisor-frozen retry and drift rules")
+    profile = _require_mapping(payload.get("benchmark_profile"), "benchmark_profile")
+    expected_profile = {
+        "id": "scale500-c32-w600-f3-600-v1",
+        "scale_factor": 500,
+        "warmup_seconds": 600,
+        "measurement_seconds": 600,
+        "concurrency": 32,
+        "client_threads": 4,
+        "restore_mechanism": "logical-restore",
+        "candidate_restore_before_every_physical_observation": True,
+        "unconditional_restart_before_every_measurement": True,
+        "pgbench_maintenance_policy": "canonical-baseline-only-no-vacuum",
+    }
+    if any(profile.get(key) != value for key, value in expected_profile.items()):
+        raise ValueError("PRIMARY benchmark profile differs from its frozen executable values")
     search_space = _require_mapping(payload.get("search_space"), "search_space")
     if search_space.get("parameter_order") != list(FINAL_SCREENING_PARAMETERS):
         raise ValueError("PRIMARY search space must use the D035 eight-parameter order")
@@ -139,7 +160,12 @@ def _validate_primary(payload: dict[str, Any], status: str) -> None:
     ):
         raise ValueError("PRIMARY Wave B must preserve the two untouched D025 seeds")
     initial = _require_mapping(payload.get("shared_bo_initial_design"), "shared_bo_initial_design")
-    if initial.get("status") != "frozen" or initial.get("size") != 12:
+    if (
+        initial.get("status") != "frozen"
+        or initial.get("size") != 12
+        or initial.get("candidate_design_sha256")
+        != "6664b06c40a484c590b7c66cadbbce9ebad77a5dafbaa86d8bd1ba58719c143e"
+    ):
         raise ValueError("PRIMARY must freeze the shared 12-point BO initial design")
     schedule = _require_mapping(payload.get("execution_schedule"), "execution_schedule")
     if (
@@ -162,6 +188,76 @@ def _validate_primary(payload: dict[str, Any], status: str) -> None:
         or constraint_audit.get("learned_constraint_used") is not False
     ):
         raise ValueError("PRIMARY must use the D036 no-learned-constraint fallback")
+    hard_gates = _require_mapping(payload.get("hard_safety_gates"), "hard_safety_gates")
+    gates = hard_gates.get("gates")
+    required_gate_ids = {
+        "manifest-and-preflight-valid",
+        "configuration-within-frozen-bounds",
+        "target-host-allowlisted",
+        "resource-snapshot-within-thresholds",
+        "candidate-restore-fingerprint-passed",
+        "unconditional-postgresql-restart",
+        "active-configuration-verified",
+        "complete-benchmark-output",
+        "rollback-and-target-health-verified",
+    }
+    observed_gate_ids = (
+        {item.get("id") for item in gates if isinstance(item, dict)}
+        if isinstance(gates, list)
+        else set()
+    )
+    validity = _require_mapping(hard_gates.get("objective_validity"), "objective_validity")
+    if (
+        hard_gates.get("status") != "machine-readable"
+        or hard_gates.get("apply_equally_to_all_methods") is not True
+        or observed_gate_ids != required_gate_ids
+        or validity.get("benchmark_failures_must_equal") != 0
+        or validity.get("p99_is_objective_not_constraint") is not True
+        or validity.get("no_learned_constraint") is not True
+    ):
+        raise ValueError("PRIMARY hard-safety gates differ from the D036 contract")
+    environment_gates = _require_mapping(
+        payload.get("pre_campaign_environment_gates"),
+        "pre_campaign_environment_gates",
+    )
+    if environment_gates != {
+        "status": "required",
+        "minimum_consecutive_restore_passes": 15,
+        "primary_schema_migration": "037_v2_primary_comparison",
+        "restore_reliability_schema_migration": "038_v2_primary_restore_reliability",
+        "artifact_runtime_directory_must_be_outside_onedrive": True,
+        "minimum_artifact_free_bytes": 50 * 1024**3,
+        "target_must_have_zero_active_campaigns": True,
+    }:
+        raise ValueError("PRIMARY pre-campaign environment gates differ from D039")
+    retry = _require_mapping(
+        payload.get("infrastructure_retry_policy"), "infrastructure_retry_policy"
+    )
+    if (
+        retry.get("maximum_trials_per_slot") != 3
+        or retry.get("worker_attempts_per_trial") != 1
+        or retry.get("retryable_failure_types")
+        != ["DATASET_RESTORE_FAILED", "BASELINE_FINGERPRINT_FAILED"]
+        or retry.get("candidate_reused_on_retry") is not True
+        or retry.get("new_proposal_on_retry") is not False
+        or retry.get("optimizer_training_on_retryable_failure") is not False
+        or retry.get("candidate_budget_consumed_by_retry") is not False
+        or retry.get("on_exhaustion") != "pause-campaign-preserve-ledger-and-require-human-decision"
+    ):
+        raise ValueError("PRIMARY infrastructure-retry policy differs from its proposal")
+    drift = _require_mapping(payload.get("drift_interpretation"), "drift_interpretation")
+    flags = _require_mapping(drift.get("transparency_flags"), "transparency_flags")
+    if (
+        drift.get("controls") != 15
+        or drift.get("primary_adjustment")
+        != "within-seed-piecewise-linear-interpolation-of-bracketing-default-controls"
+        or drift.get("flag_is_campaign_killing") is not False
+        or drift.get("report_raw_and_adjusted_results") is not True
+        or drift.get("global_default_constant_for_primary_contrasts") is not False
+        or flags.get("maximum_absolute_within_seed_fitted_tps_change_relative") != 0.05
+        or flags.get("maximum_absolute_within_seed_fitted_p99_change_ms") != 5.0
+    ):
+        raise ValueError("PRIMARY drift interpretation differs from its proposal")
 
 
 def _validate_screening_amendment(payload: dict[str, Any], role: str) -> None:

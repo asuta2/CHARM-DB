@@ -1,0 +1,170 @@
+{
+  "protocol_id": "thesis-protocol-v2",
+  "schema_version": 1,
+  "stage": "f4-confirmation",
+  "status": "blocked",
+  "evidence_role": "F4_CONFIRMATION",
+  "operator_triggered": true,
+  "execution_ready": false,
+  "artifact_root": "artifacts-newpc/v2/f4-confirmation",
+  "candidate_restore_gate": "required",
+  "prerequisites": {
+    "wave_a_terminal_analysis_complete": true,
+    "multifidelity_phase_b_terminal": true,
+    "p010_supervisor_confirmation_recorded": false,
+    "durable_f4_runner_implemented": false,
+    "result_blind_f4_analysis_implemented": false
+  },
+  "source_evidence": {
+    "primary_campaign_id": "b0619879-c807-4ee3-859e-2c2dbec9934e",
+    "primary_analysis_payload_sha256": "fa6263830e5081a64943c1057083450076a32279a191bb889dc66944cbda8f21",
+    "primary_analysis_file_sha256": "7580e1594a966167821c2b0720261c0580d70634f335811caa898e319e6e2ff1",
+    "pareto_table_file_sha256": "34e5131635eb1a2d485dd88da7c5d52f42bb71bbd6b8697632200a08b06a9ad7",
+    "selection_is_post_wave_a_and_pre_f4": true,
+    "wave_b_evidence_used": false,
+    "phase_b_evidence_used_for_candidate_selection": false
+  },
+  "recommended_design": {
+    "decision": "P010-pending",
+    "design_kind": "four-block-confirmation-with-contemporaneous-default",
+    "physical_observations": 20,
+    "blocks": 4,
+    "observations_per_block": 5,
+    "candidate_repetitions": 4,
+    "default_repetitions": 4,
+    "same_workload_seed_within_block": true,
+    "default_at_center_position": true,
+    "candidate_order": "sha256-seeded-permuted-latin-rotation",
+    "candidate_order_derivation_label": "thesis-protocol-v2/f4/latin-order",
+    "candidate_order_derivation_u64": 20908178431234099,
+    "schedule": [
+      {"block": 1, "seed": 1076286005, "order": ["T", "E", "DEFAULT", "L", "H"]},
+      {"block": 2, "seed": 1762147992, "order": ["E", "L", "DEFAULT", "H", "T"]},
+      {"block": 3, "seed": 398860006, "order": ["L", "H", "DEFAULT", "T", "E"]},
+      {"block": 4, "seed": 2004491857, "order": ["H", "T", "DEFAULT", "E", "L"]}
+    ]
+  },
+  "benchmark_profile": {
+    "profile_id": "scale500-c32-w600-f4-600-v1",
+    "scale_factor": 500,
+    "warmup_seconds": 600,
+    "measurement_seconds": 600,
+    "concurrency": 32,
+    "client_threads": 4,
+    "restore_mechanism": "logical-restore",
+    "candidate_restore_before_every_physical_observation": true,
+    "unconditional_restart_before_every_physical_observation": true,
+    "pgbench_maintenance_policy": "canonical-baseline-only-no-vacuum"
+  },
+  "finalists": [
+    {
+      "label": "T",
+      "selection_role": "best-wave-a-throughput-only-qlognei-point-on-pooled-pareto-front",
+      "primary_run_id": "fac48b65-a208-53af-b9c7-35a95063e831",
+      "source_method": "bo_qlognei_throughput",
+      "wave_a_throughput_tps": 3092.441367,
+      "wave_a_p99_ms": 26.135,
+      "requested_configuration": {
+        "checkpoint_completion_target": "0.942997",
+        "checkpoint_timeout": "1759",
+        "effective_cache_size": "503619",
+        "max_parallel_workers_per_gather": "0",
+        "max_wal_size": "713",
+        "random_page_cost": "3.759143",
+        "shared_buffers": "160298",
+        "work_mem": "3017"
+      }
+    },
+    {
+      "label": "L",
+      "selection_role": "minimum-p99-point-on-pooled-pareto-front",
+      "primary_run_id": "be166ffb-e710-57f8-a1e3-e1fafe49bced",
+      "source_method": "bo_qlognparego_multiobjective",
+      "wave_a_throughput_tps": 3025.382247,
+      "wave_a_p99_ms": 25.718,
+      "requested_configuration": {
+        "checkpoint_completion_target": "0.889254",
+        "checkpoint_timeout": "633",
+        "effective_cache_size": "170238",
+        "max_parallel_workers_per_gather": "0",
+        "max_wal_size": "869",
+        "random_page_cost": "2.836794",
+        "shared_buffers": "165420",
+        "work_mem": "7095"
+      }
+    },
+    {
+      "label": "H",
+      "selection_role": "maximum-tps-point-on-pooled-pareto-front",
+      "primary_run_id": "2970a4ab-3d39-5487-b14b-230dda4d903e",
+      "source_method": "bo_shared_initial",
+      "wave_a_throughput_tps": 3113.664716,
+      "wave_a_p99_ms": 26.242,
+      "requested_configuration": {
+        "checkpoint_completion_target": "0.871126",
+        "checkpoint_timeout": "1583",
+        "effective_cache_size": "416530",
+        "max_parallel_workers_per_gather": "1",
+        "max_wal_size": "799",
+        "random_page_cost": "2.733019",
+        "shared_buffers": "146454",
+        "work_mem": "23329"
+      }
+    },
+    {
+      "label": "E",
+      "selection_role": "qlognehvi-pooled-front-point-with-largest-individual-frozen-reference-hypervolume-contribution",
+      "primary_run_id": "e6d70fab-0c90-5795-96a1-5021bff1194c",
+      "source_method": "bo_qlognehvi_multiobjective",
+      "wave_a_throughput_tps": 3067.571824,
+      "wave_a_p99_ms": 25.994,
+      "requested_configuration": {
+        "checkpoint_completion_target": "0.936696",
+        "checkpoint_timeout": "1430",
+        "effective_cache_size": "465506",
+        "max_parallel_workers_per_gather": "3",
+        "max_wal_size": "633",
+        "random_page_cost": "3.655316",
+        "shared_buffers": "182848",
+        "work_mem": "18022"
+      }
+    }
+  ],
+  "validity_and_analysis": {
+    "independent_unit": "restored-block-with-common-workload-seed",
+    "candidate_contrast": "candidate-minus-same-block-default",
+    "required_valid_repetitions_per_treatment": 4,
+    "retain_all_failures_and_retries": true,
+    "invalid_or_missing_repetition": "no-confirmed-champion",
+    "report": [
+      "raw-and-control-relative-TPS-and-p99-per-block",
+      "mean-median-standard-deviation-and-median-absolute-deviation",
+      "descriptive-whole-block-bootstrap-intervals",
+      "failure-retry-restore-drift-and-wall-clock-accounting"
+    ],
+    "no_formal_superiority_claim_at-four-blocks": true
+  },
+  "recommended_selection_rule": {
+    "hard_gate": "all-four-repetitions-valid-zero-transaction-failures-and-both-restore-fingerprints-passed",
+    "throughput_gate": "mean-same-block-control-relative-TPS-at-least-minus-5-percent",
+    "latency_gate": "mean-same-block-control-relative-p99-at-most-minus-1-ms",
+    "frontier_gate": "confirmed-mean-TPS-at-least-95-percent-of-highest-confirmed-finalist-mean-TPS",
+    "selection": "lowest-confirmed-mean-p99-among-candidates-passing-all-gates",
+    "tie_break": "higher-confirmed-mean-TPS-then-lexicographically-smaller-primary-run-id",
+    "no_eligible_candidate": "retain-postgresql-default-and-record-no-confirmed-champion",
+    "selection_is_not_apply_best_authorization": true
+  },
+  "runtime": {
+    "projected_hours_at-d027-mean-trial-lifetime": 9.259,
+    "p95-restore-sensitivity-hours-before-retries-or-operator-gaps": 9.592,
+    "infrastructure_retries_and_operator_gaps_excluded": true
+  },
+  "separate_decisions": {
+    "wave_b": "unauthorized-and-not-required-for-this-f4-design",
+    "apply_best": "unauthorized-even-if-f4-selects-a-candidate"
+  },
+  "unresolved_decisions": [
+    "P010 supervisor confirmation of finalists, four-block repetition design, analysis gates, and non-deploying selection rule",
+    "F4 durable runner and result-blind analysis must be implemented and validated after P010"
+  ]
+}

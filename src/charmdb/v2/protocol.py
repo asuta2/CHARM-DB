@@ -446,6 +446,139 @@ def _validate_temporal_stability(payload: dict[str, Any], role: str, status: str
         raise ValueError("D034 must remain retired and non-executable under D035")
 
 
+def _validate_multi_fidelity(payload: dict[str, Any], role: str, status: str) -> None:
+    if role != "SECONDARY":
+        raise ValueError("multi-fidelity Phase A must remain SECONDARY evidence")
+    prerequisites = _require_mapping(payload.get("prerequisites"), "prerequisites")
+    if (
+        prerequisites.get("primary_campaign_complete") is not True
+        or prerequisites.get("promotion_rule_preregistered") is not True
+    ):
+        raise ValueError("Phase A requires completed primary evidence and P009")
+    phase = _require_mapping(payload.get("phase_a"), "phase_a")
+    promotion = _require_mapping(phase.get("promotion_rule"), "phase_a.promotion_rule")
+    if (
+        phase.get("kind") != "retrospective-prefix-window-analysis"
+        or phase.get("window_seconds") != [60, 120]
+        or phase.get("new_benchmark_observations") != 0
+        or phase.get("analysis_population") != "378-unique-physical-candidate-observations"
+        or phase.get("shared_bo_initialization_counted_once_physically") is not True
+        or promotion.get("decision") != "D052"
+        or promotion.get("p99_is_objective_not_constraint") is not True
+        or promotion.get("throughput_floor_ratio") != 0.8
+        or promotion.get("throughput_reference")
+        != "same-window-same-seed-piecewise-linear-interpolation-of-bracketing-default-controls"
+        or phase.get("minimum_spearman") != 0.8
+        or phase.get("maximum_top_quartile_false_rejections") != 0
+        or phase.get("require_lower_total_time_than_f3_only") is not True
+    ):
+        raise ValueError("multi-fidelity Phase A differs from the D052 pre-registration")
+    implemented = prerequisites.get("durable_phase_a_analyzer_implemented")
+    if not isinstance(implemented, bool):
+        raise ValueError("Phase A analyzer implementation gate must be Boolean")
+    if status == "ready" and (
+        implemented is not True or payload.get("execution_ready") is not True
+    ):
+        raise ValueError("ready Phase A requires its validated deterministic analyzer")
+    phase_b = _require_mapping(payload.get("phase_b"), "phase_b")
+    schedule = _require_mapping(phase_b.get("schedule"), "phase_b.schedule")
+    profile = _require_mapping(phase_b.get("benchmark_profile"), "phase_b.benchmark_profile")
+    live_promotion = _require_mapping(
+        phase_b.get("promotion_rule"), "phase_b.promotion_rule"
+    )
+    continuation = _require_mapping(
+        phase_b.get("continuation_contract"), "phase_b.continuation_contract"
+    )
+    retry = _require_mapping(
+        phase_b.get("infrastructure_retry_policy"),
+        "phase_b.infrastructure_retry_policy",
+    )
+    runtime = _require_mapping(phase_b.get("runtime"), "phase_b.runtime")
+    success = _require_mapping(phase_b.get("success_rule"), "phase_b.success_rule")
+    if (
+        phase_b.get("decision") != "D054"
+        or phase_b.get("evidence_role") != "SECONDARY"
+        or phase_b.get("method") != "sobol"
+        or phase_b.get("seed") != 748909656
+        or phase_b.get("candidate_budget") != 30
+        or phase_b.get("candidate_design_sha256")
+        != "e253fde5686b9ac52f42105d053ff0fd332844a4298eea5f12dc6f22dd242812"
+        or phase_b.get("reserved_wave_b_seeds_consumed") is not False
+    ):
+        raise ValueError("multi-fidelity Phase B differs from the D054 fixed design")
+    if (
+        schedule.get("physical_slots") != 35
+        or schedule.get("default_control_positions") != [1, 8, 15, 22, 29]
+        or schedule.get("candidates_after_each_control") != 6
+        or schedule.get("causal_control_reference")
+        != "most-recent-preceding-same-run-60-second-default-control"
+    ):
+        raise ValueError("multi-fidelity Phase B schedule differs from D054")
+    expected_profile = {
+        "profile_id": "scale500-c32-w600-f2-60-promote-to-f3-600-v1",
+        "scale_factor": 500,
+        "warmup_seconds": 600,
+        "f2_seconds": 60,
+        "promoted_continuation_seconds": 540,
+        "promoted_total_measurement_seconds": 600,
+        "concurrency": 32,
+        "client_threads": 4,
+        "restore_mechanism": "logical-restore",
+        "candidate_restore_before_every_physical_slot": True,
+        "unconditional_restart_before_every_physical_slot": True,
+        "pgbench_maintenance_policy": "canonical-baseline-only-no-vacuum",
+    }
+    if any(profile.get(key) != value for key, value in expected_profile.items()):
+        raise ValueError("multi-fidelity Phase B benchmark profile differs from D054")
+    if (
+        live_promotion.get("p99_is_objective_not_constraint") is not True
+        or live_promotion.get("requires_zero_f2_transaction_failures") is not True
+        or live_promotion.get("throughput_floor_ratio") != 0.8
+        or live_promotion.get("reference")
+        != "most-recent-preceding-control-f2-throughput"
+    ):
+        raise ValueError("multi-fidelity Phase B promotion rule differs from D054")
+    if (
+        continuation.get("same_restored_database_state") is not True
+        or continuation.get("no_restore_restart_or_warmup_between_stages") is not True
+        or continuation.get("client_process_reconnect_between_60-and-540-second-stages")
+        is not True
+        or continuation.get("persist_reconnect_gap_seconds") is not True
+        or continuation.get("aggregate_both_stage_transaction_logs_for_promoted-F3-objectives")
+        is not True
+        or continuation.get("rejected_candidates_have-no-F3-objective") is not True
+        or continuation.get("continuation_random_seed")
+        != "sha256-derived-from-thesis-protocol-v2/multifidelity/phase-b/continuation/"
+        "<candidate-position>"
+    ):
+        raise ValueError("multi-fidelity Phase B continuation contract differs from D054")
+    if (
+        retry.get("maximum_trials_per_slot") != 3
+        or retry.get("candidate_reused_on_retry") is not True
+        or retry.get("candidate_budget_consumed_by_retry") is not False
+        or retry.get("on_exhaustion") != "pause-preserve-ledger-require-human-decision"
+        or runtime.get("maximum_physical_slots") != 35
+        or runtime.get("maximum_candidate_f3_promotions") != 30
+        or runtime.get("restore-inclusive_hours_before_retries_or-operator-gaps") != 15.453
+        or runtime.get("operator_accepted") is not True
+        or runtime.get("agent_must_not_launch_benchmark") is not True
+        or success.get("measured_total_time_lower_than-counterfactual-F3-only") is not True
+        or success.get("maximum_absolute-time-model-error-relative") != 0.1
+    ):
+        raise ValueError("multi-fidelity Phase B retry, runtime, or success rule differs from D054")
+    runner = phase_b.get("durable_runner_implemented")
+    prerequisite_runner = prerequisites.get("durable_phase_b_runner_implemented")
+    if not isinstance(runner, bool) or not isinstance(prerequisite_runner, bool):
+        raise ValueError("Phase B durable runner gates must be Boolean")
+    if status == "ready" and (
+        runner is not True
+        or prerequisite_runner is not True
+        or phase_b.get("status") != "execution-ready"
+        or phase_b.get("schema_migration") != "039_v2_multifidelity_phase_b"
+    ):
+        raise ValueError("ready Phase B requires the validated durable two-stage runner")
+
+
 def validate_manifest(payload: dict[str, Any], *, path: Path | None = None) -> ProtocolManifest:
     payload = _require_mapping(payload, "manifest")
     if payload.get("protocol_id") != PROTOCOL_ID:
@@ -486,6 +619,8 @@ def validate_manifest(payload: dict[str, Any], *, path: Path | None = None) -> P
         _validate_screening_remediation(payload)
     if stage == "post-screening-temporal-stability":
         _validate_temporal_stability(payload, role, status)
+    if stage == "multi-fidelity":
+        _validate_multi_fidelity(payload, role, status)
     if stage == "screening-interpretation-amendment":
         _validate_screening_amendment(payload, role)
     if role == "PRIMARY":

@@ -100,6 +100,22 @@ _TABLE_EXPORTS = {
            ORDER BY s.created_at,r.sequence""",
         "Per-repetition primary restore-soak evidence and failure retention",
     ),
+    "multifidelity-phase-b-blocks.json": (
+        """SELECT * FROM charm_control.experiment_v2_multifidelity_phase_b_blocks
+           ORDER BY created_at,phase_b_block_id""",
+        "Live multi-fidelity Phase B block and terminal analysis ledger",
+    ),
+    "multifidelity-phase-b-runs.json": (
+        """SELECT * FROM charm_control.experiment_v2_multifidelity_phase_b_runs
+           ORDER BY phase_b_block_id,physical_position""",
+        "Immutable Phase B control/candidate slots and promotion decisions",
+    ),
+    "multifidelity-phase-b-attempts.json": (
+        """SELECT a.* FROM charm_control.experiment_v2_multifidelity_phase_b_attempts a
+           JOIN charm_control.experiment_v2_multifidelity_phase_b_runs r USING(phase_b_run_id)
+           ORDER BY r.phase_b_block_id,r.physical_position,a.attempt_number""",
+        "Append-only Phase B attempt and infrastructure-retry ledger",
+    ),
     "infrastructure-failed-trials.json": (
         """SELECT trial_id,campaign_id,state,failure_type,attempt_count,max_attempts,
                   diagnostic_details,workflow_result,created_at,started_at,completed_at

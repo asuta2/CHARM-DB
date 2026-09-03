@@ -370,6 +370,155 @@ def run_pgbench_measurement(
     )
 
 
+def run_pgbench_promoted_measurement(
+    settings: Settings,
+    output_dir: Path,
+    prefix_seconds: int,
+    continuation_seconds: int,
+    concurrency: int,
+    seed: int,
+    continuation_seed: int,
+    attempt: int,
+    baseline_throughput_tps: float,
+    throughput_floor_ratio: float,
+    progress_callback: Callable[[], None] | None = None,
+    poll_interval_seconds: float = 5.0,
+    application_name: str | None = None,
+    client_threads: int | None = None,
+    runtime_sample_callback: Callable[[], dict[str, Any]] | None = None,
+) -> MeasurementExecution:
+    """Run an atomic F2 decision followed by an optional same-state continuation.
+
+    The two pgbench client processes intentionally use independent markers.  A
+    recovery therefore never repeats a completed prefix or continuation.  No
+    database restore, restart, or warm-up occurs between these calls.
+    """
+    if prefix_seconds < 1 or continuation_seconds < 1:
+        raise ValueError("promotion stages must have positive durations")
+    if baseline_throughput_tps <= 0 or not 0 < throughput_floor_ratio <= 1:
+        raise ValueError("promotion baseline and throughput ratio must be positive")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    marker_path = output_dir / f"measurement-attempt-{attempt}.json"
+    if marker_path.exists():
+        return load_measurement_marker(marker_path)
+
+    prefix_dir = output_dir / "f2-prefix"
+    continuation_dir = output_dir / "f3-continuation"
+    prefix_application = f"{application_name}-f2" if application_name else None
+    continuation_application = f"{application_name}-f3" if application_name else None
+    prefix = run_pgbench_measurement(
+        settings,
+        prefix_dir,
+        prefix_seconds,
+        concurrency,
+        seed,
+        attempt,
+        progress_callback,
+        poll_interval_seconds,
+        prefix_application,
+        client_threads,
+        runtime_sample_callback,
+    )
+    threshold_tps = baseline_throughput_tps * throughput_floor_ratio
+    promoted = prefix.result.failures == 0 and prefix.result.throughput_tps >= threshold_tps
+    continuation: MeasurementExecution | None = None
+    if promoted:
+        continuation = run_pgbench_measurement(
+            settings,
+            continuation_dir,
+            continuation_seconds,
+            concurrency,
+            continuation_seed,
+            attempt,
+            progress_callback,
+            poll_interval_seconds,
+            continuation_application,
+            client_threads,
+            runtime_sample_callback,
+        )
+    reconnect_gap_seconds = 0.0
+    if continuation is not None:
+        prefix_marker = json.loads(prefix.marker_path.read_text(encoding="utf-8"))
+        continuation_marker = json.loads(continuation.marker_path.read_text(encoding="utf-8"))
+        prefix_completed = datetime.fromisoformat(str(prefix_marker["completed_at"]))
+        continuation_started = datetime.fromisoformat(str(continuation_marker["started_at"]))
+        reconnect_gap_seconds = max(
+            0.0, (continuation_started - prefix_completed).total_seconds()
+        )
+
+    stage_executions: list[MeasurementExecution] = [prefix]
+    if continuation is not None:
+        stage_executions.append(continuation)
+    log_paths = sorted(prefix_dir.glob("pgbench-*"))
+    if continuation is not None:
+        log_paths.extend(sorted(continuation_dir.glob("pgbench-*")))
+    latencies, transactions, failures = parse_pgbench_logs(log_paths)
+    if not latencies:
+        raise RuntimeError("promoted measurement produced no usable latency samples")
+    planned_seconds = prefix_seconds + (continuation_seconds if promoted else 0)
+    result = WorkloadResult(
+        transactions=transactions,
+        failures=failures,
+        throughput_tps=(transactions - failures) / planned_seconds,
+        p50_ms=percentile(latencies, 0.50),
+        p95_ms=percentile(latencies, 0.95),
+        p99_ms=percentile(latencies, 0.99),
+        duration_seconds=sum(item.result.duration_seconds for item in stage_executions),
+        latency_samples=len(latencies),
+    )
+    promotion = {
+        "promoted": promoted,
+        "prefix_seconds": prefix_seconds,
+        "continuation_seconds": continuation_seconds if promoted else 0,
+        "prefix_throughput_tps": prefix.result.throughput_tps,
+        "prefix_failures": prefix.result.failures,
+        "baseline_throughput_tps": baseline_throughput_tps,
+        "throughput_floor_ratio": throughput_floor_ratio,
+        "threshold_tps": threshold_tps,
+        "reconnect_gap_seconds": reconnect_gap_seconds,
+        "prefix_marker": str(prefix.marker_path.relative_to(output_dir)),
+        "continuation_marker": (
+            str(continuation.marker_path.relative_to(output_dir))
+            if continuation is not None
+            else None
+        ),
+    }
+    runtime_telemetry = {
+        "promotion": promotion,
+        "f2": prefix.runtime_telemetry,
+        "f3_continuation": (
+            continuation.runtime_telemetry if continuation is not None else None
+        ),
+    }
+    command = [item for stage in stage_executions for item in stage.command]
+    payload = {
+        "attempt": attempt,
+        "seed": seed,
+        "continuation_seed": continuation_seed,
+        "duration_seconds": planned_seconds,
+        "concurrency": concurrency,
+        "pgbench_maintenance_policy": PGBENCH_MAINTENANCE_POLICY,
+        "command": command,
+        "result": asdict(result),
+        "stdout": "\n".join(item.stdout for item in stage_executions),
+        "stderr": "\n".join(item.stderr for item in stage_executions),
+        "runtime_telemetry": runtime_telemetry,
+        "promotion": promotion,
+        "completed_at": datetime.now(UTC).isoformat(),
+    }
+    temporary = marker_path.with_suffix(".json.tmp")
+    temporary.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    temporary.replace(marker_path)
+    return MeasurementExecution(
+        result,
+        command,
+        payload["stdout"],
+        payload["stderr"],
+        marker_path,
+        runtime_telemetry,
+    )
+
+
 def _run(
     command: list[str],
     password: str,

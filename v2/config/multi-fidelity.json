@@ -2,29 +2,120 @@
   "protocol_id": "thesis-protocol-v2",
   "schema_version": 1,
   "stage": "multi-fidelity",
-  "status": "draft",
+  "status": "ready",
   "evidence_role": "SECONDARY",
   "operator_triggered": true,
+  "execution_ready": true,
   "artifact_root": "artifacts-newpc/v2/multi-fidelity",
   "candidate_restore_gate": "required",
   "prerequisites": {
-    "primary_campaign_complete": false,
-    "promotion_rule_preregistered": false
+    "primary_campaign_complete": true,
+    "promotion_rule_preregistered": true,
+    "durable_phase_a_analyzer_implemented": true,
+    "durable_phase_b_runner_implemented": true
   },
   "phase_a": {
     "kind": "retrospective-prefix-window-analysis",
     "window_seconds": [60, 120],
     "new_benchmark_observations": 0,
+    "analysis_population": "378-unique-physical-candidate-observations",
+    "shared_bo_initialization_counted_once_physically": true,
+    "default_controls": "15-same-seed-interleaved-physical-controls",
+    "promotion_rule": {
+      "decision": "D052",
+      "p99_is_objective_not_constraint": true,
+      "requires_complete_authenticated_measurement_marker": true,
+      "requires_zero_prefix_transaction_failures": true,
+      "requires_passed_full_observation_hard_safety_gates": true,
+      "throughput_floor_ratio": 0.8,
+      "throughput_reference": "same-window-same-seed-piecewise-linear-interpolation-of-bracketing-default-controls",
+      "boundary_control_policy": "nearest-control-value-outside-bracketed-range",
+      "missing_or_invalid_prefix": "reject-and-retain-as-false-rejection-eligible"
+    },
+    "full_fidelity_good_definition": "within-seed-top-quartile-by-drift-adjusted-full-F3-throughput-among-valid-physical-candidates",
+    "rank_analysis": "spearman-prefix-control-relative-TPS-versus-full-F3-control-relative-TPS-over-unique-physical-candidates-within-seed; pooled-value-is-descriptive-only",
+    "threshold_sensitivity_ratios": [0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1.0],
+    "time_model": {
+      "rejected_candidate_saves_measurement_seconds": "600-window_seconds",
+      "promoted_candidate_costs_measurement_seconds": 600,
+      "restore_restart_verification_warmup_costs_are_always_paid": true,
+      "compare_against_f3_only_measured-total-time": true
+    },
     "minimum_spearman": 0.8,
-    "maximum_top_quartile_false_rejections": 0
+    "maximum_top_quartile_false_rejections": 0,
+    "require_lower_total_time_than_f3_only": true,
+    "adoption_rule": "all-criteria-must-pass-in-every-seed-at-both-60-and-120-seconds; pooled-values-are-descriptive-only"
   },
   "phase_b": {
     "kind": "optional-live-demonstration",
     "run_only_if_phase_a_promising": true,
-    "maximum_f2_observations": 40
+    "status": "execution-ready",
+    "decision": "D054",
+    "evidence_role": "SECONDARY",
+    "method": "sobol",
+    "seed_derivation_label": "thesis-protocol-v2/multifidelity/phase-b/sobol/seed/1",
+    "seed": 748909656,
+    "candidate_budget": 30,
+    "candidate_design_sha256": "e253fde5686b9ac52f42105d053ff0fd332844a4298eea5f12dc6f22dd242812",
+    "reserved_wave_b_seeds_consumed": false,
+    "schedule": {
+      "physical_slots": 35,
+      "default_control_positions": [1, 8, 15, 22, 29],
+      "candidates_after_each_control": 6,
+      "causal_control_reference": "most-recent-preceding-same-run-60-second-default-control",
+      "candidate_order": "fixed-scrambled-sobol-design-order"
+    },
+    "benchmark_profile": {
+      "profile_id": "scale500-c32-w600-f2-60-promote-to-f3-600-v1",
+      "scale_factor": 500,
+      "warmup_seconds": 600,
+      "f2_seconds": 60,
+      "promoted_continuation_seconds": 540,
+      "promoted_total_measurement_seconds": 600,
+      "concurrency": 32,
+      "client_threads": 4,
+      "restore_mechanism": "logical-restore",
+      "candidate_restore_before_every_physical_slot": true,
+      "unconditional_restart_before_every_physical_slot": true,
+      "pgbench_maintenance_policy": "canonical-baseline-only-no-vacuum"
+    },
+    "promotion_rule": {
+      "p99_is_objective_not_constraint": true,
+      "requires_zero_f2_transaction_failures": true,
+      "requires_passed_hard_safety_gates": true,
+      "throughput_floor_ratio": 0.8,
+      "reference": "most-recent-preceding-control-f2-throughput"
+    },
+    "continuation_contract": {
+      "same_restored_database_state": true,
+      "no_restore_restart_or_warmup_between_stages": true,
+      "client_process_reconnect_between_60-and-540-second-stages": true,
+      "persist_reconnect_gap_seconds": true,
+      "aggregate_both_stage_transaction_logs_for_promoted-F3-objectives": true,
+      "rejected_candidates_have-no-F3-objective": true,
+      "continuation_random_seed": "sha256-derived-from-thesis-protocol-v2/multifidelity/phase-b/continuation/<candidate-position>"
+    },
+    "infrastructure_retry_policy": {
+      "maximum_trials_per_slot": 3,
+      "candidate_reused_on_retry": true,
+      "candidate_budget_consumed_by_retry": false,
+      "on_exhaustion": "pause-preserve-ledger-require-human-decision"
+    },
+    "runtime": {
+      "maximum_physical_slots": 35,
+      "maximum_candidate_f3_promotions": 30,
+      "restore-inclusive_hours_before_retries_or-operator-gaps": 15.453,
+      "operator_accepted": true,
+      "agent_must_not_launch_benchmark": true
+    },
+    "success_rule": {
+      "measured_total_time_lower_than-counterfactual-F3-only": true,
+      "maximum_absolute-time-model-error-relative": 0.1,
+      "all_failures-and-retries-retained": true
+    },
+    "schema_migration": "039_v2_multifidelity_phase_b",
+    "durable_runner_implemented": true,
+    "maximum_f2_observations": 30
   },
-  "unresolved_decisions": [
-    "replace p99-based promotion rule with validity and default-relative throughput floor",
-    "approve thresholds before retrospective results are viewed"
-  ]
+  "unresolved_decisions": []
 }

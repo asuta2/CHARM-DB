@@ -54,6 +54,7 @@ from charmdb.workload import (
     MeasurementExecution,
     load_measurement_marker,
     run_pgbench_measurement,
+    run_pgbench_promoted_measurement,
     run_pgbench_warmup,
 )
 
@@ -821,6 +822,7 @@ def create_v2_tuned_benchmark_trial(
     physical_archive_id: uuid.UUID | None = None,
     benchmark_profile: str = "v2-saturation-phase2",
     runtime_samples_required: bool = False,
+    promotion_rule: dict[str, Any] | None = None,
 ) -> uuid.UUID:
     if not idempotency_key.strip():
         raise ValueError("idempotency_key cannot be empty")
@@ -846,6 +848,29 @@ def create_v2_tuned_benchmark_trial(
         raise ValueError("unsupported v2 candidate restore mechanism")
     if (restore_mechanism == "physical-archive") != (physical_archive_id is not None):
         raise ValueError("physical-archive trials require exactly one physical_archive_id")
+    if promotion_rule is not None:
+        required_promotion = {
+            "prefix_seconds",
+            "continuation_seconds",
+            "baseline_throughput_tps",
+            "throughput_floor_ratio",
+            "continuation_seed",
+        }
+        if set(promotion_rule) != required_promotion:
+            raise ValueError("promotion rule fields differ from the durable two-stage contract")
+        if (
+            int(promotion_rule["prefix_seconds"]) < 1
+            or int(promotion_rule["continuation_seconds"]) < 1
+            or float(promotion_rule["baseline_throughput_tps"]) <= 0
+            or not 0 < float(promotion_rule["throughput_floor_ratio"]) <= 1
+            or int(promotion_rule["continuation_seed"]) < 1
+        ):
+            raise ValueError("invalid durable two-stage promotion rule")
+        expected = int(promotion_rule["prefix_seconds"]) + int(
+            promotion_rule["continuation_seconds"]
+        )
+        if duration_seconds != expected:
+            raise ValueError("tuned duration must equal prefix plus continuation duration")
 
     requested = {str(name): str(value) for name, value in candidate.items()}
     metadata = discover_knobs(settings, set(requested))
@@ -875,6 +900,8 @@ def create_v2_tuned_benchmark_trial(
     }
     if physical_archive_id is not None:
         payload["physical_archive_id"] = str(physical_archive_id)
+    if promotion_rule is not None:
+        payload["promotion_rule"] = dict(promotion_rule)
 
     with connect(settings.control_dsn) as conn, conn.cursor() as cur:
         cur.execute(
@@ -1591,35 +1618,64 @@ def _execute_or_recover_measurement(
         }
     else:
         application_name = _workload_application_name(lease, "measurement")
-        orphan_cleanup = _terminate_orphan_workload_sessions(settings, application_name)
+        promotion_rule = lease.payload.get("promotion_rule")
+        if promotion_rule is None:
+            orphan_cleanup = _terminate_orphan_workload_sessions(settings, application_name)
+        else:
+            orphan_cleanup = {
+                "stages": [
+                    _terminate_orphan_workload_sessions(settings, f"{application_name}-f2"),
+                    _terminate_orphan_workload_sessions(settings, f"{application_name}-f3"),
+                ]
+            }
 
         def renew_lease() -> None:
             heartbeat(settings, lease, lease_seconds)
 
-        execution = run_pgbench_measurement(
-            settings,
-            output_dir,
-            duration,
-            int(lease.payload["concurrency"]),
-            int(lease.payload["seed"]),
-            lease.attempt_count,
-            renew_lease,
-            poll_interval,
-            application_name,
-            client_threads=(
+        common = {
+            "progress_callback": renew_lease,
+            "poll_interval_seconds": poll_interval,
+            "application_name": application_name,
+            "client_threads": (
                 int(lease.payload["client_threads"])
                 if lease.payload.get("client_threads") is not None
                 else None
             ),
-            runtime_sample_callback=(
+            "runtime_sample_callback": (
                 (lambda: capture_runtime_resource_sample(settings))
                 if lease.workflow_kind == SATURATION_PHASE1_WORKFLOW
                 or bool(lease.payload.get("runtime_samples_required"))
                 else None
             ),
-        )
+        }
+        if promotion_rule is None:
+            execution = run_pgbench_measurement(
+                settings,
+                output_dir,
+                duration,
+                int(lease.payload["concurrency"]),
+                int(lease.payload["seed"]),
+                lease.attempt_count,
+                **common,
+            )
+        else:
+            rule = dict(promotion_rule)
+            execution = run_pgbench_promoted_measurement(
+                settings,
+                output_dir,
+                int(rule["prefix_seconds"]),
+                int(rule["continuation_seconds"]),
+                int(lease.payload["concurrency"]),
+                int(lease.payload["seed"]),
+                int(rule["continuation_seed"]),
+                lease.attempt_count,
+                float(rule["baseline_throughput_tps"]),
+                float(rule["throughput_floor_ratio"]),
+                **common,
+            )
         recovered_marker = False
     relative = execution.marker_path.relative_to(settings.artifact_dir)
+    promotion = execution.runtime_telemetry.get("promotion")
     return {
         "result": asdict(execution.result),
         "marker_relative_path": str(relative),
@@ -1628,6 +1684,7 @@ def _execute_or_recover_measurement(
         "command": execution.command,
         "runtime_telemetry": execution.runtime_telemetry,
         "orphan_cleanup": orphan_cleanup,
+        "promotion": promotion,
     }
 
 
@@ -1643,6 +1700,14 @@ def _validate_measurement(settings: Settings, lease: TrialLease) -> dict[str, An
     execution = _measurement_execution_from_result(settings, action)
     result = execution.result
     expected_duration = int(lease.payload["duration_seconds"])
+    promotion = action.get("promotion")
+    if lease.payload.get("promotion_rule") is not None:
+        if not isinstance(promotion, dict) or not isinstance(promotion.get("promoted"), bool):
+            raise ValueError("two-stage measurement lacks an authenticated promotion decision")
+        rule = dict(lease.payload["promotion_rule"])
+        expected_duration = int(rule["prefix_seconds"]) + (
+            int(rule["continuation_seconds"]) if promotion["promoted"] else 0
+        )
     if result.transactions < 1 or result.latency_samples < 1:
         raise ValueError("measurement has no completed client observations")
     if result.duration_seconds < expected_duration * 0.8:
@@ -1760,6 +1825,7 @@ def _persist_benchmark_observation(settings: Settings, lease: TrialLease) -> dic
                         **payload["result"],
                         "measurement_marker": payload["measurement_marker"],
                         "runtime_telemetry": execution.runtime_telemetry,
+                        "promotion": measurement_action.get("promotion"),
                     }
                 ),
                 lease.trial_id,

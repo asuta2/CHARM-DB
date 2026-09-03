@@ -165,6 +165,68 @@ def analyze_rolling_measurement(
     }
 
 
+def analyze_prefix_windows(
+    marker_path: Path, window_seconds: tuple[int, ...]
+) -> dict[int, WindowMetrics]:
+    """Calculate cumulative measurement prefixes from one authenticated marker.
+
+    The caller authenticates the marker bytes against durable evidence. This
+    function parses the transaction logs once and returns only windows that fit
+    inside the persisted measurement duration.
+    """
+    if not window_seconds or any(window < 1 for window in window_seconds):
+        raise ValueError("prefix windows must contain positive seconds")
+    if len(set(window_seconds)) != len(window_seconds):
+        raise ValueError("prefix windows must be unique")
+    payload = json.loads(marker_path.read_text(encoding="utf-8"))
+    command = payload.get("command")
+    result = payload.get("result")
+    if not isinstance(command, list) or not isinstance(result, dict):
+        raise ValueError("invalid measurement marker")
+    duration = float(payload.get("duration_seconds") or result["duration_seconds"])
+    if max(window_seconds) > duration:
+        raise ValueError("prefix window exceeds persisted measurement duration")
+    start_epoch = _measurement_start_epoch(payload)
+    end_epoch = start_epoch + max(window_seconds)
+    records: list[PgbenchLogRecord] = []
+    for path in _log_paths(marker_path, command):
+        with path.open("r", encoding="utf-8") as handle:
+            for line in handle:
+                if not line or line.startswith("#"):
+                    continue
+                fields = line.split()
+                if len(fields) < 3:
+                    continue
+                try:
+                    client_id = int(fields[0])
+                    transaction_number = int(fields[1])
+                    latency_us = int(fields[2])
+                    timestamp = (
+                        int(fields[4]) + int(fields[5]) / 1_000_000.0
+                        if len(fields) >= 6
+                        else 0.0
+                    )
+                except ValueError:
+                    continue
+                if timestamp >= end_epoch:
+                    break
+                records.append(
+                    PgbenchLogRecord(
+                        client_id=client_id,
+                        transaction_number=transaction_number,
+                        latency_ms=max(0, latency_us) / 1000.0,
+                        timestamp_seconds=timestamp,
+                        failed=latency_us < 0,
+                    )
+                )
+    if any(record.timestamp_seconds <= 0 for record in records):
+        raise ValueError("pgbench logs do not contain epoch timestamps")
+    return {
+        window: calculate_window(records, start_epoch, 0.0, float(window))
+        for window in sorted(window_seconds)
+    }
+
+
 def _pareto_names(rows: list[dict[str, Any]], metric_key: str) -> set[str]:
     result: set[str] = set()
     for candidate in rows:

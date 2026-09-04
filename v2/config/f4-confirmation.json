@@ -11,7 +11,7 @@
   "prerequisites": {
     "wave_a_terminal_analysis_complete": true,
     "multifidelity_phase_b_terminal": true,
-    "p010_supervisor_confirmation_recorded": false,
+    "p010_supervisor_confirmation_recorded": true,
     "durable_f4_runner_implemented": false,
     "result_blind_f4_analysis_implemented": false
   },
@@ -25,7 +25,7 @@
     "phase_b_evidence_used_for_candidate_selection": false
   },
   "recommended_design": {
-    "decision": "P010-pending",
+    "decision": "P010-approved-D059",
     "design_kind": "four-block-confirmation-with-contemporaneous-default",
     "physical_observations": 20,
     "blocks": 4,
@@ -37,6 +37,13 @@
     "candidate_order": "sha256-seeded-permuted-latin-rotation",
     "candidate_order_derivation_label": "thesis-protocol-v2/f4/latin-order",
     "candidate_order_derivation_u64": 20908178431234099,
+    "infrastructure_retry_policy": {
+      "maximum_trials_per_slot": 3,
+      "candidate_and_seed_reused_on_retry": true,
+      "candidate_budget_consumed_by_retry": false,
+      "candidate_or_benchmark_failure_is_terminal": true,
+      "on_exhaustion": "pause-preserve-ledger-require-human-decision"
+    },
     "schedule": [
       {"block": 1, "seed": 1076286005, "order": ["T", "E", "DEFAULT", "L", "H"]},
       {"block": 2, "seed": 1762147992, "order": ["E", "L", "DEFAULT", "H", "T"]},
@@ -163,8 +170,13 @@
     "wave_b": "unauthorized-and-not-required-for-this-f4-design",
     "apply_best": "unauthorized-even-if-f4-selects-a-candidate"
   },
+  "p010_approval": {
+    "decision": "D059",
+    "date": "2026-09-04",
+    "statement": "I approve the recommended P010/F4 plan exactly as specified in v2/config/f4-confirmation.json. This authorizes F4 implementation and external execution only; it does not authorize Wave B or apply-best",
+    "implementation_retry_interpretation": "inherits-the-established-three-attempt-infrastructure-only-policy; scientific-candidate-failures-are-terminal"
+  },
   "unresolved_decisions": [
-    "P010 supervisor confirmation of finalists, four-block repetition design, analysis gates, and non-deploying selection rule",
     "F4 durable runner and result-blind analysis must be implemented and validated after P010"
   ]
 }

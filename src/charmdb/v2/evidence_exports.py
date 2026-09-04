@@ -116,6 +116,22 @@ _TABLE_EXPORTS = {
            ORDER BY r.phase_b_block_id,r.physical_position,a.attempt_number""",
         "Append-only Phase B attempt and infrastructure-retry ledger",
     ),
+    "f4-blocks.json": (
+        """SELECT * FROM charm_control.experiment_v2_f4_blocks
+           ORDER BY created_at,f4_block_id""",
+        "F4 confirmation block, frozen source evidence, and terminal analysis ledger",
+    ),
+    "f4-runs.json": (
+        """SELECT * FROM charm_control.experiment_v2_f4_runs
+           ORDER BY f4_block_id,physical_position""",
+        "Immutable F4 default/finalist common-seed block schedule",
+    ),
+    "f4-attempts.json": (
+        """SELECT a.* FROM charm_control.experiment_v2_f4_attempts a
+           JOIN charm_control.experiment_v2_f4_runs r USING(f4_run_id)
+           ORDER BY r.f4_block_id,r.physical_position,a.attempt_number""",
+        "Append-only F4 attempt and infrastructure-retry ledger",
+    ),
     "infrastructure-failed-trials.json": (
         """SELECT trial_id,campaign_id,state,failure_type,attempt_count,max_attempts,
                   diagnostic_details,workflow_result,created_at,started_at,completed_at

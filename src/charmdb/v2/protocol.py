@@ -579,6 +579,85 @@ def _validate_multi_fidelity(payload: dict[str, Any], role: str, status: str) ->
         raise ValueError("ready Phase B requires the validated durable two-stage runner")
 
 
+def _validate_f4_confirmation(payload: dict[str, Any], role: str, status: str) -> None:
+    if role != "F4_CONFIRMATION":
+        raise ValueError("F4 confirmation must use the F4_CONFIRMATION evidence role")
+    prerequisites = _require_mapping(payload.get("prerequisites"), "F4 prerequisites")
+    design = _require_mapping(payload.get("recommended_design"), "F4 design")
+    profile = _require_mapping(payload.get("benchmark_profile"), "F4 benchmark profile")
+    selection = _require_mapping(payload.get("recommended_selection_rule"), "F4 selection rule")
+    finalists = payload.get("finalists")
+    schedule = design.get("schedule")
+    if not isinstance(finalists, list) or len(finalists) != 4:
+        raise ValueError("F4 requires exactly four finalists")
+    labels = {str(row.get("label")) for row in finalists if isinstance(row, dict)}
+    if labels != {"T", "L", "H", "E"}:
+        raise ValueError("F4 finalist labels differ from P010")
+    expected_finalists = {
+        "T": "fac48b65-a208-53af-b9c7-35a95063e831",
+        "L": "be166ffb-e710-57f8-a1e3-e1fafe49bced",
+        "H": "2970a4ab-3d39-5487-b14b-230dda4d903e",
+        "E": "e6d70fab-0c90-5795-96a1-5021bff1194c",
+    }
+    observed_finalists = {
+        str(row["label"]): str(row.get("primary_run_id"))
+        for row in finalists
+        if isinstance(row, dict) and "label" in row
+    }
+    if observed_finalists != expected_finalists:
+        raise ValueError("F4 source finalist identities differ from P010")
+    if not isinstance(schedule, list) or len(schedule) != 4:
+        raise ValueError("F4 requires four common-seed blocks")
+    for block in schedule:
+        block = _require_mapping(block, "F4 schedule block")
+        order = block.get("order")
+        if (
+            not isinstance(order, list)
+            or len(order) != 5
+            or set(order) != labels | {"DEFAULT"}
+            or order[2] != "DEFAULT"
+        ):
+            raise ValueError("F4 block must contain all treatments with default in the center")
+    expected_schedule = [
+        (1, 1076286005, ["T", "E", "DEFAULT", "L", "H"]),
+        (2, 1762147992, ["E", "L", "DEFAULT", "H", "T"]),
+        (3, 398860006, ["L", "H", "DEFAULT", "T", "E"]),
+        (4, 2004491857, ["H", "T", "DEFAULT", "E", "L"]),
+    ]
+    observed_schedule = [
+        (int(block["block"]), int(block["seed"]), list(block["order"])) for block in schedule
+    ]
+    if observed_schedule != expected_schedule:
+        raise ValueError("F4 schedule or seeds differ from P010")
+    if (
+        design.get("physical_observations") != 20
+        or design.get("candidate_repetitions") != 4
+        or design.get("default_repetitions") != 4
+        or profile.get("profile_id") != "scale500-c32-w600-f4-600-v1"
+        or profile.get("warmup_seconds") != 600
+        or profile.get("measurement_seconds") != 600
+        or profile.get("candidate_restore_before_every_physical_observation") is not True
+        or profile.get("unconditional_restart_before_every_physical_observation") is not True
+        or selection.get("selection_is_not_apply_best_authorization") is not True
+    ):
+        raise ValueError("F4 design, profile, or deployment boundary differs from P010")
+    retry = _require_mapping(design.get("infrastructure_retry_policy"), "F4 retry policy")
+    if (
+        retry.get("maximum_trials_per_slot") != 3
+        or retry.get("candidate_and_seed_reused_on_retry") is not True
+        or retry.get("candidate_budget_consumed_by_retry") is not False
+        or retry.get("candidate_or_benchmark_failure_is_terminal") is not True
+    ):
+        raise ValueError("F4 retry policy differs from D059")
+    if status == "ready" and (
+        payload.get("execution_ready") is not True
+        or prerequisites.get("p010_supervisor_confirmation_recorded") is not True
+        or prerequisites.get("durable_f4_runner_implemented") is not True
+        or prerequisites.get("result_blind_f4_analysis_implemented") is not True
+    ):
+        raise ValueError("ready F4 requires approval, runner, and result-blind analysis")
+
+
 def validate_manifest(payload: dict[str, Any], *, path: Path | None = None) -> ProtocolManifest:
     payload = _require_mapping(payload, "manifest")
     if payload.get("protocol_id") != PROTOCOL_ID:
@@ -621,6 +700,8 @@ def validate_manifest(payload: dict[str, Any], *, path: Path | None = None) -> P
         _validate_temporal_stability(payload, role, status)
     if stage == "multi-fidelity":
         _validate_multi_fidelity(payload, role, status)
+    if stage == "f4-confirmation":
+        _validate_f4_confirmation(payload, role, status)
     if stage == "screening-interpretation-amendment":
         _validate_screening_amendment(payload, role)
     if role == "PRIMARY":

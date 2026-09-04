@@ -86,6 +86,17 @@ from charmdb.v2.default_reference import (
 )
 from charmdb.v2.evidence_exports import export_v2_evidence_ledgers
 from charmdb.v2.evidence_integrity import build_evidence_manifest
+from charmdb.v2.f4_confirmation import (
+    F4_MANIFEST,
+    analyze_f4,
+    create_f4_plan,
+    export_f4_analysis,
+    f4_history,
+    f4_readiness,
+    f4_step_dict,
+    render_f4_report,
+    run_f4_next,
+)
 from charmdb.v2.multifidelity_phase_a import PRIMARY_CAMPAIGN_ID, execute_phase_a
 from charmdb.v2.multifidelity_phase_b import (
     MULTIFIDELITY_MANIFEST,
@@ -1171,6 +1182,88 @@ def v2_multifidelity_phase_a_command(
 ) -> None:
     """Execute the D052 retrospective analysis without running a benchmark."""
     typer.echo(json.dumps(execute_phase_a(get_settings(), campaign_id, output), indent=2))
+
+
+@app.command("v2-f4-validate")
+def v2_f4_validate_command(
+    manifest: Annotated[
+        Path, typer.Option(exists=True, file_okay=True, dir_okay=False, readable=True)
+    ] = F4_MANIFEST,
+) -> None:
+    """Validate the P010 F4 design and live readiness gates."""
+    result = f4_readiness(get_settings(), manifest)
+    typer.echo(json.dumps(result, indent=2, default=str))
+    if not result["ready"]:
+        raise typer.Exit(code=1)
+
+
+@app.command("v2-f4-create")
+def v2_f4_create_command(
+    manifest: Annotated[
+        Path, typer.Option(exists=True, file_okay=True, dir_okay=False, readable=True)
+    ] = F4_MANIFEST,
+) -> None:
+    """Create the immutable 20-slot F4 campaign without starting it."""
+    campaign_id = create_f4_plan(get_settings(), manifest)
+    typer.echo(json.dumps({"campaign_id": str(campaign_id), "status": "CREATED"}, indent=2))
+
+
+@app.command("v2-f4-run-next")
+def v2_f4_run_next_command(
+    campaign_id: uuid.UUID,
+    owner: str = "v2-f4-confirmation",
+    lease_seconds: int = 600,
+) -> None:
+    typer.echo(
+        json.dumps(
+            f4_step_dict(
+                run_f4_next(get_settings(), campaign_id, owner=owner, lease_seconds=lease_seconds)
+            ),
+            indent=2,
+            default=str,
+        )
+    )
+
+
+@app.command("v2-f4-run")
+def v2_f4_run_command(
+    campaign_id: uuid.UUID,
+    owner: str = "v2-f4-confirmation",
+    lease_seconds: int = 600,
+    max_steps: int = 0,
+) -> None:
+    """Run F4 until completion, infrastructure pause, or a caller-supplied bound."""
+    if max_steps < 0:
+        raise typer.BadParameter("max-steps cannot be negative")
+    completed = 0
+    while max_steps == 0 or completed < max_steps:
+        step = run_f4_next(get_settings(), campaign_id, owner=owner, lease_seconds=lease_seconds)
+        typer.echo(json.dumps(f4_step_dict(step), default=str))
+        completed += 1
+        if step.action in {"observations-complete", "infrastructure-paused"}:
+            break
+
+
+@app.command("v2-f4-history")
+def v2_f4_history_command(campaign_id: uuid.UUID) -> None:
+    typer.echo(json.dumps(f4_history(get_settings(), campaign_id), indent=2, default=str))
+
+
+@app.command("v2-f4-analyze")
+def v2_f4_analyze_command(campaign_id: uuid.UUID) -> None:
+    typer.echo(json.dumps(analyze_f4(get_settings(), campaign_id), indent=2, default=str))
+
+
+@app.command("v2-f4-export")
+def v2_f4_export_command(campaign_id: uuid.UUID, output: Path | None = None) -> None:
+    typer.echo(
+        json.dumps(export_f4_analysis(get_settings(), campaign_id, output), indent=2, default=str)
+    )
+
+
+@app.command("v2-f4-report")
+def v2_f4_report_command(campaign_id: uuid.UUID) -> None:
+    typer.echo(json.dumps(render_f4_report(get_settings(), campaign_id), indent=2, default=str))
 
 
 @app.command("v2-multifidelity-phase-b-validate")

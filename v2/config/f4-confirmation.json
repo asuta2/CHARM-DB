@@ -2,18 +2,18 @@
   "protocol_id": "thesis-protocol-v2",
   "schema_version": 1,
   "stage": "f4-confirmation",
-  "status": "blocked",
+  "status": "ready",
   "evidence_role": "F4_CONFIRMATION",
   "operator_triggered": true,
-  "execution_ready": false,
+  "execution_ready": true,
   "artifact_root": "artifacts-newpc/v2/f4-confirmation",
   "candidate_restore_gate": "required",
   "prerequisites": {
     "wave_a_terminal_analysis_complete": true,
     "multifidelity_phase_b_terminal": true,
     "p010_supervisor_confirmation_recorded": true,
-    "durable_f4_runner_implemented": false,
-    "result_blind_f4_analysis_implemented": false
+    "durable_f4_runner_implemented": true,
+    "result_blind_f4_analysis_implemented": true
   },
   "source_evidence": {
     "primary_campaign_id": "b0619879-c807-4ee3-859e-2c2dbec9934e",
@@ -176,7 +176,22 @@
     "statement": "I approve the recommended P010/F4 plan exactly as specified in v2/config/f4-confirmation.json. This authorizes F4 implementation and external execution only; it does not authorize Wave B or apply-best",
     "implementation_retry_interpretation": "inherits-the-established-three-attempt-infrastructure-only-policy; scientific-candidate-failures-are-terminal"
   },
-  "unresolved_decisions": [
-    "F4 durable runner and result-blind analysis must be implemented and validated after P010"
-  ]
+  "implementation": {
+    "decision": "D060",
+    "schema_migration": "040_v2_f4_confirmation",
+    "module": "charmdb.v2.f4_confirmation",
+    "commands": [
+      "v2-f4-validate",
+      "v2-f4-create",
+      "v2-f4-run-next",
+      "v2-f4-run",
+      "v2-f4-history",
+      "v2-f4-analyze",
+      "v2-f4-export",
+      "v2-f4-report"
+    ],
+    "agent_must_not_launch_benchmark": true,
+    "long_run_is_external_operator_boundary": true
+  },
+  "unresolved_decisions": []
 }

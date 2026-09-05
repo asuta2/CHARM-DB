@@ -7,10 +7,10 @@ CHARM-DB means **Contextual, Holistic, Adaptive, Risk-aware, Multi-fidelity Data
 Protocol-v2 checkpoint D064 (2026-09-05) has implemented and live-validated the
 separately pre-registered Wave B continuation. Migration 041, the 262-slot deterministic
 design, durable runner, standalone two-seed report, and subsequent combined five-seed
-report are ready under manifest SHA-256 `35d0b57b...3c3e18`; no Wave B campaign or
-observation exists yet. The next bounded action is to commit this freeze, create exactly
-one campaign, audit zero observations, and hand the approximately 121.010-hour run to
-the external operator. Apply-best remains deferred.
+report are ready under manifest SHA-256 `35d0b57b...3c3e18`. D065 created the only
+Wave B campaign, `8d95edea-81e7-41eb-ba81-0997008cf4a8`, and audited all 262 frozen
+slots with zero observations. The approximately 121.010-hour run is now at the external
+operator boundary. Apply-best remains deferred.
 
 The mandatory checkpoint was confirmed on 2026-07-12. Slices 1–15 foundations are implemented: isolated target/control databases, bounded knob/index optimization, fingerprints and drift detection, an explicit F0–F4 ladder, prequential calibration/risk comparison, compatibility-gated transfer, coordinated schedule construction, and measured-cost accounting. The durable worker now executes read-only health checks, default benchmarks, bounded reload- or restart-class knob benchmark trials, and managed index build/drop trials with renewable leases, stale recovery, idempotent state actions, atomic workload-completion markers, verified mutation, and final rollback/cleanup. A continuous service drains safely on signals, emits bounded JSON events, removes exact per-trial orphan database sessions, and applies pre/post disk/OOM/health/memory gates; bounded Prometheus application metrics are exposed. A migration-backed multi-objective development path now persists qLogNEHVI/qLogNParEGO recommendation identity, feasible Pareto snapshots, explicit context/fidelity, reconstruction metadata, and repeated-F4 candidate evidence. Its only executed multi-objective run is one-context development evidence, not an effectiveness result or robust champion. The risk gate remains closed, and Slices 13–15 do not yet have prospective equal-budget performance evidence.
 

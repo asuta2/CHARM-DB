@@ -14,6 +14,7 @@ import torch
 from charmdb.v2.protocol import FINAL_SCREENING_PARAMETERS, PRIMARY_SEARCH_METHODS, load_manifest
 
 PRIMARY_MANIFEST = Path("v2/config/primary-comparison.json")
+PRIMARY_WAVE_B_MANIFEST = Path("v2/config/primary-wave-b.json")
 CONTROL_POSITIONS = (1, 34, 66, 99, 131)
 BO_METHODS = PRIMARY_SEARCH_METHODS[2:]
 PRIMARY_PARAMETER_ORDER = FINAL_SCREENING_PARAMETERS
@@ -172,9 +173,11 @@ def primary_method_design(
     return _unique_candidates(points, payload, count)
 
 
-def primary_candidate_design_payload(payload: dict[str, Any]) -> list[dict[str, object]]:
+def primary_candidate_design_payload_for_seeds(
+    payload: dict[str, Any], seeds: list[int] | tuple[int, ...]
+) -> list[dict[str, object]]:
     rows: list[dict[str, object]] = []
-    for seed in payload["wave_a"]["seeds"]:
+    for seed in seeds:
         for method in ("random", "sobol", "bo_shared_initial"):
             for position, candidate in enumerate(
                 primary_method_design(int(seed), method, payload), start=1
@@ -191,8 +194,18 @@ def primary_candidate_design_payload(payload: dict[str, Any]) -> list[dict[str, 
     return rows
 
 
+def primary_candidate_design_payload(payload: dict[str, Any]) -> list[dict[str, object]]:
+    return primary_candidate_design_payload_for_seeds(payload, payload["wave_a"]["seeds"])
+
+
+def primary_candidate_design_sha256_for_seeds(
+    payload: dict[str, Any], seeds: list[int] | tuple[int, ...]
+) -> str:
+    return _canonical_sha256(primary_candidate_design_payload_for_seeds(payload, seeds))
+
+
 def primary_candidate_design_sha256(payload: dict[str, Any]) -> str:
-    return _canonical_sha256(primary_candidate_design_payload(payload))
+    return primary_candidate_design_sha256_for_seeds(payload, payload["wave_a"]["seeds"])
 
 
 def primary_restore_soak_contract_sha256(payload: dict[str, Any]) -> str:
@@ -260,15 +273,12 @@ def _candidate_schedule(seed: int, schedule_seed: int) -> list[_ScheduleItem]:
     return candidates
 
 
-def build_wave_a_schedule(path: Path = PRIMARY_MANIFEST) -> tuple[PrimaryScheduleEntry, ...]:
-    manifest = load_manifest(path)
-    if manifest.stage != "primary-comparison" or manifest.evidence_role != "PRIMARY":
-        raise ValueError("primary schedule requires the dedicated PRIMARY manifest")
-    payload = manifest.payload
-    schedule_seed = int(payload["execution_schedule"]["schedule_seed"])
+def build_primary_schedule(
+    seeds: list[int] | tuple[int, ...], schedule_seed: int
+) -> tuple[PrimaryScheduleEntry, ...]:
     entries: list[PrimaryScheduleEntry] = []
     global_position = 0
-    for seed_index, seed in enumerate(payload["wave_a"]["seeds"], start=1):
+    for seed_index, seed in enumerate(seeds, start=1):
         candidates = _candidate_schedule(int(seed), schedule_seed)
         candidate_index = 0
         for within_seed_position in range(1, 132):
@@ -300,6 +310,26 @@ def build_wave_a_schedule(path: Path = PRIMARY_MANIFEST) -> tuple[PrimarySchedul
     return tuple(entries)
 
 
+def build_wave_a_schedule(path: Path = PRIMARY_MANIFEST) -> tuple[PrimaryScheduleEntry, ...]:
+    manifest = load_manifest(path)
+    if manifest.stage != "primary-comparison" or manifest.evidence_role != "PRIMARY":
+        raise ValueError("primary schedule requires the dedicated PRIMARY manifest")
+    payload = manifest.payload
+    return build_primary_schedule(
+        [int(seed) for seed in payload["wave_a"]["seeds"]],
+        int(payload["execution_schedule"]["schedule_seed"]),
+    )
+
+
+def build_wave_b_schedule(
+    wave_b_payload: dict[str, Any], primary_payload: dict[str, Any]
+) -> tuple[PrimaryScheduleEntry, ...]:
+    return build_primary_schedule(
+        [int(seed) for seed in wave_b_payload["wave_b"]["seeds"]],
+        int(wave_b_payload["execution_schedule"]["schedule_seed"]),
+    )
+
+
 def schedule_sha256(entries: tuple[PrimaryScheduleEntry, ...]) -> str:
     payload = [asdict(entry) for entry in entries]
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -323,6 +353,37 @@ def build_wave_a_plan(path: Path = PRIMARY_MANIFEST) -> tuple[PrimaryPlanEntry, 
             candidate = designs[(entry.seed, entry.method)][entry.budget_position - 1]
         plan.append(PrimaryPlanEntry(schedule=entry, candidate=candidate))
     return tuple(plan)
+
+
+def build_primary_plan_for_seeds(
+    payload: dict[str, Any],
+    seeds: list[int] | tuple[int, ...],
+    schedule_seed: int,
+) -> tuple[PrimaryPlanEntry, ...]:
+    designs = {
+        (int(seed), method): primary_method_design(int(seed), method, payload)
+        for seed in seeds
+        for method in ("random", "sobol", "bo_shared_initial")
+    }
+    plan: list[PrimaryPlanEntry] = []
+    for entry in build_primary_schedule(seeds, schedule_seed):
+        candidate: PrimaryCandidate | None = None
+        if entry.method in {"random", "sobol", "bo_shared_initial"}:
+            if entry.budget_position is None:
+                raise RuntimeError("fixed primary candidate is missing its budget position")
+            candidate = designs[(entry.seed, entry.method)][entry.budget_position - 1]
+        plan.append(PrimaryPlanEntry(schedule=entry, candidate=candidate))
+    return tuple(plan)
+
+
+def build_wave_b_plan(
+    wave_b_payload: dict[str, Any], primary_payload: dict[str, Any]
+) -> tuple[PrimaryPlanEntry, ...]:
+    return build_primary_plan_for_seeds(
+        primary_payload,
+        [int(seed) for seed in wave_b_payload["wave_b"]["seeds"]],
+        int(wave_b_payload["execution_schedule"]["schedule_seed"]),
+    )
 
 
 def export_primary_design(

@@ -118,6 +118,7 @@ from charmdb.v2.physical_archive import (
 )
 from charmdb.v2.primary_design import (
     PRIMARY_MANIFEST,
+    PRIMARY_WAVE_B_MANIFEST,
     export_primary_design,
     primary_design_summary,
 )
@@ -142,6 +143,21 @@ from charmdb.v2.primary_reliability import (
     primary_restore_soak_history,
     primary_restore_soak_readiness,
     run_primary_restore_soak_next,
+)
+from charmdb.v2.primary_wave_b import (
+    analyze_final_five_seed,
+    analyze_wave_b,
+    create_wave_b_plan,
+    export_final_five_seed_analysis,
+    export_final_five_seed_report,
+    export_wave_b_analysis,
+    export_wave_b_design,
+    export_wave_b_report,
+    run_wave_b_next,
+    wave_b_design_summary,
+    wave_b_history,
+    wave_b_readiness,
+    wave_b_step_dict,
 )
 from charmdb.v2.restore_capability import (
     assess_restore_capabilities,
@@ -1173,6 +1189,149 @@ def v2_primary_report_secondary_command(
                 f"secondary report {label} must stay under the primary artifact root"
             )
     typer.echo(json.dumps(export_secondary_report(source_path, output_dir), indent=2))
+
+
+@app.command("v2-primary-wave-b-design-validate")
+def v2_primary_wave_b_design_validate_command(
+    manifest: Annotated[
+        Path, typer.Option(exists=True, file_okay=True, dir_okay=False, readable=True)
+    ] = PRIMARY_WAVE_B_MANIFEST,
+) -> None:
+    """Validate the frozen, result-blind two-seed Wave B design."""
+    typer.echo(json.dumps(wave_b_design_summary(manifest), indent=2))
+
+
+@app.command("v2-primary-wave-b-design-export")
+def v2_primary_wave_b_design_export_command(
+    output: Path | None = None,
+    manifest: Annotated[
+        Path, typer.Option(exists=True, file_okay=True, dir_okay=False, readable=True)
+    ] = PRIMARY_WAVE_B_MANIFEST,
+) -> None:
+    typer.echo(json.dumps(export_wave_b_design(manifest, output), indent=2))
+
+
+@app.command("v2-primary-wave-b-validate")
+def v2_primary_wave_b_validate_command(
+    preflight_id: uuid.UUID = FROZEN_PREFLIGHT_ID,
+    manifest: Annotated[
+        Path, typer.Option(exists=True, file_okay=True, dir_okay=False, readable=True)
+    ] = PRIMARY_WAVE_B_MANIFEST,
+) -> None:
+    typer.echo(
+        json.dumps(
+            wave_b_readiness(get_settings(), preflight_id, manifest),
+            indent=2,
+            default=str,
+        )
+    )
+
+
+@app.command("v2-primary-wave-b-create")
+def v2_primary_wave_b_create_command(
+    preflight_id: uuid.UUID = FROZEN_PREFLIGHT_ID,
+    manifest: Annotated[
+        Path, typer.Option(exists=True, file_okay=True, dir_okay=False, readable=True)
+    ] = PRIMARY_WAVE_B_MANIFEST,
+) -> None:
+    """Create exactly one Wave B campaign without running an observation."""
+    campaign_id = create_wave_b_plan(get_settings(), preflight_id, manifest)
+    typer.echo(json.dumps({"campaign_id": str(campaign_id), "observations_run": 0}, indent=2))
+
+
+@app.command("v2-primary-wave-b-run-next")
+def v2_primary_wave_b_run_next_command(
+    campaign_id: uuid.UUID,
+    owner: str = "v2-primary-wave-b",
+    lease_seconds: int = 600,
+) -> None:
+    typer.echo(
+        json.dumps(
+            wave_b_step_dict(
+                run_wave_b_next(
+                    get_settings(), campaign_id, owner=owner, lease_seconds=lease_seconds
+                )
+            ),
+            indent=2,
+            default=str,
+        )
+    )
+
+
+@app.command("v2-primary-wave-b-run")
+def v2_primary_wave_b_run_command(
+    campaign_id: uuid.UUID,
+    owner: str = "v2-primary-wave-b",
+    lease_seconds: int = 600,
+    max_steps: int = 0,
+) -> None:
+    """Run Wave B externally until completion, infrastructure pause, or a step bound."""
+    if max_steps < 0:
+        raise typer.BadParameter("max-steps cannot be negative")
+    completed = 0
+    while max_steps == 0 or completed < max_steps:
+        step = run_wave_b_next(
+            get_settings(), campaign_id, owner=owner, lease_seconds=lease_seconds
+        )
+        typer.echo(json.dumps(wave_b_step_dict(step), default=str))
+        completed += 1
+        if step.action in {"observations-complete", "infrastructure-paused"}:
+            break
+
+
+@app.command("v2-primary-wave-b-history")
+def v2_primary_wave_b_history_command(campaign_id: uuid.UUID) -> None:
+    typer.echo(json.dumps(wave_b_history(get_settings(), campaign_id), indent=2, default=str))
+
+
+@app.command("v2-primary-wave-b-analyze")
+def v2_primary_wave_b_analyze_command(campaign_id: uuid.UUID) -> None:
+    typer.echo(json.dumps(analyze_wave_b(get_settings(), campaign_id), indent=2, default=str))
+
+
+@app.command("v2-primary-wave-b-export")
+def v2_primary_wave_b_export_command(campaign_id: uuid.UUID, output: Path | None = None) -> None:
+    typer.echo(json.dumps(export_wave_b_analysis(get_settings(), campaign_id, output), indent=2))
+
+
+@app.command("v2-primary-wave-b-report")
+def v2_primary_wave_b_report_command(campaign_id: uuid.UUID, output: Path | None = None) -> None:
+    typer.echo(json.dumps(export_wave_b_report(get_settings(), campaign_id, output), indent=2))
+
+
+@app.command("v2-primary-final-analyze")
+def v2_primary_final_analyze_command(wave_b_campaign_id: uuid.UUID) -> None:
+    typer.echo(
+        json.dumps(
+            analyze_final_five_seed(get_settings(), wave_b_campaign_id),
+            indent=2,
+            default=str,
+        )
+    )
+
+
+@app.command("v2-primary-final-export")
+def v2_primary_final_export_command(
+    wave_b_campaign_id: uuid.UUID, output: Path | None = None
+) -> None:
+    typer.echo(
+        json.dumps(
+            export_final_five_seed_analysis(get_settings(), wave_b_campaign_id, output),
+            indent=2,
+        )
+    )
+
+
+@app.command("v2-primary-final-report")
+def v2_primary_final_report_command(
+    wave_b_campaign_id: uuid.UUID, output: Path | None = None
+) -> None:
+    typer.echo(
+        json.dumps(
+            export_final_five_seed_report(get_settings(), wave_b_campaign_id, output),
+            indent=2,
+        )
+    )
 
 
 @app.command("v2-multifidelity-phase-a")

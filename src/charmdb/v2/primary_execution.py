@@ -772,14 +772,21 @@ def _execute_or_resume_attempt(
     )
 
 
-def run_primary_next(
+def _run_primary_next_with_contract(
     settings: Settings,
     campaign_id: uuid.UUID,
     *,
-    owner: str = "v2-primary",
-    lease_seconds: int = 600,
+    payload: dict[str, Any],
+    expected_observations: int,
+    expected_wave: str,
+    owner: str,
+    lease_seconds: int,
 ) -> PrimaryStep:
     block = _primary_block(settings, campaign_id)
+    if str(block.get("wave", "A")) != expected_wave:
+        raise ValueError(
+            f"primary campaign wave must be {expected_wave}, not {block.get('wave', 'A')}"
+        )
     primary_block_id = uuid.UUID(str(block["primary_block_id"]))
     reconciled = _reconcile_primary_attempt(settings, primary_block_id)
     if reconciled is not None and reconciled.get("run_status") == "INFRASTRUCTURE_EXHAUSTED":
@@ -830,7 +837,10 @@ def run_primary_next(
                 (primary_block_id,),
             )
             counts = {str(item["status"]): int(item["count"]) for item in cur.fetchall()}
-            if sum(counts.get(status, 0) for status in TERMINAL_RUN_STATUSES) != 393:
+            if (
+                sum(counts.get(status, 0) for status in TERMINAL_RUN_STATUSES)
+                != expected_observations
+            ):
                 raise RuntimeError(
                     f"primary ledger has no runnable slot but is incomplete: {counts}"
                 )
@@ -859,11 +869,29 @@ def run_primary_next(
             {"counts": counts},
         )
     row = dict(planned_row)
-    _, payload = primary_manifest_payload(PRIMARY_MANIFEST)
     if row["status"] == "PLANNED":
         row = _materialize_adaptive_candidate(settings, row, payload)
     return _execute_or_resume_attempt(
         settings, campaign_id, primary_block_id, row, owner, lease_seconds
+    )
+
+
+def run_primary_next(
+    settings: Settings,
+    campaign_id: uuid.UUID,
+    *,
+    owner: str = "v2-primary",
+    lease_seconds: int = 600,
+) -> PrimaryStep:
+    _, payload = primary_manifest_payload(PRIMARY_MANIFEST)
+    return _run_primary_next_with_contract(
+        settings,
+        campaign_id,
+        payload=payload,
+        expected_observations=393,
+        expected_wave="A",
+        owner=owner,
+        lease_seconds=lease_seconds,
     )
 
 
@@ -964,13 +992,21 @@ def _mean_or_none(values: list[float]) -> float | None:
 
 
 def analyze_primary_observations(
-    rows: list[dict[str, Any]], payload: dict[str, Any]
+    rows: list[dict[str, Any]],
+    payload: dict[str, Any],
+    *,
+    seeds: list[int] | None = None,
+    expected_observations: int = 393,
+    report_scope: str | None = None,
 ) -> dict[str, Any]:
-    if len(rows) != 393:
-        raise ValueError("primary analysis requires the complete 393-slot ledger")
+    analysis_seeds = [int(seed) for seed in (seeds or payload["wave_a"]["seeds"])]
+    if len(rows) != expected_observations:
+        raise ValueError(
+            f"primary analysis requires the complete {expected_observations}-slot ledger"
+        )
     controls_by_seed: dict[int, list[dict[str, float]]] = {}
     drift_flags: list[dict[str, Any]] = []
-    for seed in payload["wave_a"]["seeds"]:
+    for seed in analysis_seeds:
         controls: list[dict[str, float]] = []
         for row in rows:
             if int(row["seed"]) != int(seed) or row["method"] != "postgresql_default":
@@ -1048,7 +1084,7 @@ def analyze_primary_observations(
             )
 
     seed_method_results: list[dict[str, Any]] = []
-    for seed in payload["wave_a"]["seeds"]:
+    for seed in analysis_seeds:
         for method in PRIMARY_SEARCH_METHODS:
             points = expanded.get((int(seed), method), [])
             observations = [
@@ -1179,7 +1215,9 @@ def analyze_primary_observations(
             for right in PRIMARY_SEARCH_METHODS[left_index + 1 :]:
                 left_values = values_by_method[left]
                 right_values = values_by_method[right]
-                if len(left_values) != 3 or len(right_values) != 3:
+                if len(left_values) != len(analysis_seeds) or len(right_values) != len(
+                    analysis_seeds
+                ):
                     continue
                 comparison = paired_comparison(left_values, right_values)
                 metric_pairs.append(
@@ -1206,18 +1244,14 @@ def analyze_primary_observations(
     accounting = failure_accounting(rows, payload)
     front = pareto_front(rows)
     for method_summary in method_summaries:
-        counts = next(
-            item for item in accounting if item["method"] == method_summary["method"]
-        )
+        counts = next(item for item in accounting if item["method"] == method_summary["method"])
         method_summary["candidate_failed_slots"] = counts["candidate_failed_slots"]
         method_summary["completed_but_invalid_slots"] = counts["completed_but_invalid_slots"]
-        method_summary["infrastructure_exhausted_slots"] = counts[
-            "infrastructure_exhausted_slots"
-        ]
+        method_summary["infrastructure_exhausted_slots"] = counts["infrastructure_exhausted_slots"]
         method_summary["retained_infrastructure_attempts"] = counts[
             "retained_infrastructure_attempts"
         ]
-    return {
+    result = {
         "outcome": "COMPLETE_WITH_DRIFT_FLAGS" if any_drift else "COMPLETE",
         "analysis_policy": payload["drift_interpretation"],
         "reference_point": list(PRIMARY_REFERENCE_POINT),
@@ -1235,7 +1269,8 @@ def analyze_primary_observations(
         "control_series": control_series(rows, payload),
         "candidate_scatter": candidate_scatter(rows),
         "inference_guard": (
-            "Seed is the independent unit (n=3). Bootstrap intervals are descriptive and exact "
+            f"Seed is the independent unit (n={len(analysis_seeds)}). Bootstrap intervals are "
+            "descriptive and exact "
             "paired permutation p-values are necessarily coarse; no observation-level "
             "pseudo-replication is used. Holm adjustment is applied within each endpoint family."
         ),
@@ -1244,6 +1279,16 @@ def analyze_primary_observations(
             "Report latency-side or Pareto expansion separately from TPS dominance."
         ),
     }
+    if report_scope is not None:
+        result.update(
+            {
+                "report_scope": report_scope,
+                "independent_seed_count": len(analysis_seeds),
+                "expected_physical_observations": expected_observations,
+                "analysis_seeds": analysis_seeds,
+            }
+        )
+    return result
 
 
 def analyze_primary(settings: Settings, campaign_id: uuid.UUID) -> dict[str, Any]:

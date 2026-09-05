@@ -553,7 +553,8 @@ def figure_pareto(analysis: dict[str, Any]) -> str:
     return _document(
         width,
         height,
-        "Wave A candidates, nondominated front, and interleaved default controls",
+        f"{analysis.get('report_scope', 'Wave A')} candidates, nondominated front, "
+        "and interleaved default controls",
         body,
         "Controls are overlaid and never joined to a method. Shared BO initialization points are "
         "measured once and counted in each Bayesian budget.",
@@ -624,7 +625,8 @@ def figure_hypervolume_by_slot(analysis: dict[str, Any]) -> str:
         "hypervolume",
         "Fixed-reference hypervolume by logical candidate slot",
         f"Hypervolume at reference {tuple(PRIMARY_REFERENCE_POINT)}",
-        "Thin lines are individual seeds; the bold line is the across-seed mean at n=3.",
+        "Thin lines are individual seeds; the bold line is the across-seed mean at "
+        f"n={analysis.get('independent_seed_count', 3)}.",
     )
 
 
@@ -634,7 +636,8 @@ def figure_best_throughput_by_slot(analysis: dict[str, Any]) -> str:
         "best_throughput_tps",
         "Best observed throughput by logical candidate slot",
         "Best observed TPS so far",
-        "Thin lines are individual seeds; the bold line is the across-seed mean at n=3.",
+        "Thin lines are individual seeds; the bold line is the across-seed mean at "
+        f"n={analysis.get('independent_seed_count', 3)}.",
     )
 
 
@@ -644,7 +647,8 @@ def figure_minimum_p99_by_slot(analysis: dict[str, Any]) -> str:
         "minimum_p99_ms",
         "Minimum observed p99 by logical candidate slot",
         "Minimum observed p99 (ms, lower is better)",
-        "Thin lines are individual seeds; the bold line is the across-seed mean at n=3.",
+        "Thin lines are individual seeds; the bold line is the across-seed mean at "
+        f"n={analysis.get('independent_seed_count', 3)}.",
     )
 
 
@@ -654,15 +658,15 @@ def figure_default_drift(analysis: dict[str, Any]) -> str:
     seeds = sorted({int(item["seed"]) for item in analysis["control_series"]})
     width, height = 960, 660
     positions = [float(item["global_position"]) for item in analysis["control_series"]]
-    x_low, x_high = (1.0, 393.0) if not positions else (1.0, max(393.0, max(positions)))
+    expected = float(analysis.get("expected_physical_observations", 393))
+    x_low, x_high = (1.0, expected) if not positions else (1.0, max(expected, max(positions)))
     tps_low, tps_high = _padded_bounds([float(item["throughput_tps"]) for item in series])
     p99_low, p99_high = _padded_bounds([float(item["p99_ms"]) for item in series])
     top = _Frame(84, width - 260, 56, 320, x_low, x_high, tps_low, tps_high)
     bottom = _Frame(84, width - 260, 388, height - 70, x_low, x_high, p99_low, p99_high)
-    body = _axes(top, "Chronological physical observation (1-393)", "Default control TPS")
-    body.extend(
-        _axes(bottom, "Chronological physical observation (1-393)", "Default control p99 (ms)")
-    )
+    axis = f"Chronological physical observation (1-{int(expected)})"
+    body = _axes(top, axis, "Default control TPS")
+    body.extend(_axes(bottom, axis, "Default control p99 (ms)"))
     palette = ["#4c72b0", "#dd8452", "#55a868"]
     for index, seed in enumerate(seeds):
         color = palette[index % len(palette)]
@@ -691,10 +695,11 @@ def figure_default_drift(analysis: dict[str, Any]) -> str:
         )
     )
     flagged = [item for item in analysis["drift_flags"] if item.get("flagged")]
+    scope = str(analysis.get("report_scope", "Wave A"))
     note = (
-        "Drift flags are transparency markers only and never terminate or discard Wave A."
+        f"Drift flags are transparency markers only and never terminate or discard {scope}."
         if not flagged
-        else f"{len(flagged)} seed(s) raised a transparency drift flag; Wave A is not discarded."
+        else f"{len(flagged)} seed(s) raised a transparency drift flag; {scope} is not discarded."
     )
     return _document(width, height, "PostgreSQL default control drift within each seed", body, note)
 
@@ -713,7 +718,8 @@ def figure_safety_outcomes(analysis: dict[str, Any]) -> str:
     width, height = 960, 520
     maximum = max([float(item[keys[status]]) for item in accounting for status in statuses] + [1.0])
     frame = _Frame(84, width - 300, 56, height - 90, 0.0, float(len(accounting)), 0.0, maximum)
-    body = _axes(frame, "Search method", "Logical slots (90 per method)")
+    logical_slots = max(int(item["logical_slots"]) for item in accounting)
+    body = _axes(frame, "Search method", f"Logical slots ({logical_slots} per method)")
     group_width = (frame.right - frame.left) / max(1, len(accounting))
     for index, item in enumerate(accounting):
         for offset, status in enumerate(statuses):
@@ -864,8 +870,10 @@ def _round(value: Any, digits: int = 4) -> Any:
 
 def render_markdown(analysis: dict[str, Any], context: dict[str, Any]) -> str:
     tables = primary_tables(analysis)
+    scope = str(analysis.get("report_scope", "Wave A"))
+    seed_count = int(analysis.get("independent_seed_count", 3))
     lines: list[str] = [
-        "# Protocol-v2 Wave A primary comparison report",
+        f"# Protocol-v2 {scope} primary comparison report",
         "",
         f"- Campaign: `{context['campaign_id']}`",
         f"- Primary block: `{context['primary_block_id']}`",
@@ -877,8 +885,8 @@ def render_markdown(analysis: dict[str, Any], context: dict[str, Any]) -> str:
         f"- Hypervolume reference: `{tuple(PRIMARY_REFERENCE_POINT)}`",
         f"- Outcome: **{analysis['outcome']}**",
         "",
-        "Wave A is reported on its own. It is a three-seed comparison and must never be "
-        "described as five-seed confirmation. The PostgreSQL default is an interleaved "
+        f"{scope} is reported on its own. It is a {seed_count}-seed comparison and must never "
+        "be described as five-seed confirmation. The PostgreSQL default is an interleaved "
         "reference, not a method row, and consumes no candidate slot.",
         "",
         "## Method outcomes",
@@ -1030,7 +1038,7 @@ def render_markdown(analysis: dict[str, Any], context: dict[str, Any]) -> str:
             "",
             f"- {analysis['inference_guard']}",
             f"- {analysis['interpretation_guard']}",
-            "- Drift flags are transparency markers; they never terminate or discard Wave A.",
+            f"- Drift flags are transparency markers; they never terminate or discard {scope}.",
             "- Retained infrastructure attempts consume no candidate slot and never train a GP.",
             "- No post-result change to endpoints, the reference point, validity rules, retry "
             "treatment, drift adjustment, or the multiplicity family is permitted without an "
@@ -1089,7 +1097,7 @@ def render_primary_report(
     for name in sorted(FIGURES):
         _write(root / "figures" / name, FIGURES[name](analysis).encode("utf-8"), files, root)
     index = {
-        "report_kind": "thesis-protocol-v2-primary-wave-a",
+        "report_kind": f"thesis-protocol-v2-primary-{str(context.get('wave', 'A')).lower()}",
         "evidence_role": context.get("evidence_role", "PRIMARY"),
         "deterministic": True,
         "context": context,

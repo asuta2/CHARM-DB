@@ -260,6 +260,146 @@ def _validate_primary(payload: dict[str, Any], status: str) -> None:
         raise ValueError("PRIMARY drift interpretation differs from its proposal")
 
 
+def _validate_primary_wave_b(payload: dict[str, Any], role: str, status: str) -> None:
+    if role != "PRIMARY":
+        raise ValueError("primary Wave B must retain PRIMARY evidence role")
+    source = _require_mapping(payload.get("source_evidence"), "source_evidence")
+    expected_source = {
+        "wave_a_manifest_path": "v2/config/primary-comparison.json",
+        "wave_a_manifest_sha256": (
+            "c576afa6eae9e7a44a6abad61096943494f0cd7875bd999fb66750f067e7baa9"
+        ),
+        "wave_a_campaign_id": "b0619879-c807-4ee3-859e-2c2dbec9934e",
+        "wave_a_primary_block_id": "6f713338-78fe-5cc5-81f9-810de1684c2e",
+        "wave_a_analysis_payload_sha256": (
+            "fa6263830e5081a64943c1057083450076a32279a191bb889dc66944cbda8f21"
+        ),
+        "wave_a_analysis_file_sha256": (
+            "7580e1594a966167821c2b0720261c0580d70634f335811caa898e319e6e2ff1"
+        ),
+        "preregistration_path": "v2/docs/wave-b-final-analysis-preregistration.md",
+        "preregistration_sha256": (
+            "6733a2888fbb6a5c792d550f8e13c64498b9ce126f205254385111056b087289"
+        ),
+        "preregistration_commit": "efdf811",
+    }
+    if any(source.get(key) != value for key, value in expected_source.items()):
+        raise ValueError("primary Wave B source/preregistration identity differs from D063")
+    if source.get("wave_a_results_not_used_to_change_protocol") is not True:
+        raise ValueError("primary Wave B must retain the D063 no-protocol-change guard")
+
+    wave = _require_mapping(payload.get("wave_b"), "wave_b")
+    if (
+        wave.get("status") != "authorized-after-readiness"
+        or wave.get("seed_count") != 2
+        or wave.get("seeds") != [1902413987, 740267717]
+        or wave.get("candidate_budget_per_method") != 30
+        or wave.get("physical_observations_per_seed") != 131
+        or wave.get("physical_observations") != 262
+        or wave.get("report_standalone_before_combined") is not True
+    ):
+        raise ValueError("primary Wave B must use the exact two untouched D025 seeds")
+
+    schedule = _require_mapping(payload.get("execution_schedule"), "execution_schedule")
+    if (
+        schedule.get("kind") != "temporally-interleaved-rounds"
+        or schedule.get("schedule_seed") != 1527323437
+        or schedule.get("schedule_sha256")
+        != "4b71b1b992c210dfb29aace7e15c99151a65d985537f32121597e3205f5f8c6e"
+        or schedule.get("candidate_design_sha256")
+        != "679505326616f2c4eb1fdeccd1081a0d22896fd82d0bf5452ac1ddf8cf931358"
+        or schedule.get("default_controls_per_seed") != 5
+        or schedule.get("control_positions") != [1, 34, 66, 99, 131]
+        or schedule.get("shared_bo_initial_size") != 12
+    ):
+        raise ValueError("primary Wave B deterministic design differs from D063")
+
+    inheritance = _require_mapping(
+        payload.get("frozen_protocol_inheritance"), "frozen_protocol_inheritance"
+    )
+    inherited_guards = [key for key, value in inheritance.items() if key != "source" and not value]
+    if inheritance.get("source") != "v2/config/primary-comparison.json" or inherited_guards:
+        raise ValueError("primary Wave B must inherit every frozen Wave A protocol rule")
+
+    analysis = _require_mapping(payload.get("analysis"), "analysis")
+    if (
+        analysis.get("independent_unit") != "seed"
+        or analysis.get("registered_endpoints")
+        != [
+            "hypervolume_at_0_negative_40",
+            "best_throughput_tps",
+            "minimum_p99_ms",
+            "mean_control_relative_tps",
+            "mean_control_relative_p99_ms",
+        ]
+        or analysis.get("standalone_wave_b_first") is not True
+        or analysis.get("combined_seed_count") != 5
+        or analysis.get("combined_rule")
+        != "append-two-wave-b-seed-level-values-to-three-authenticated-wave-a-seed-level-values"
+        or analysis.get("candidate_rows_are_not_independent_replicates") is not True
+        or analysis.get("endpoints_are_not_independent_confirmations") is not True
+        or analysis.get("permutation_test") != "exact-two-sided-paired-sign-flip"
+        or analysis.get("minimum_unadjusted_two_sided_p_at_five_seeds") != 0.0625
+        or analysis.get("one_sided_0_03125_not_registered") is not True
+        or analysis.get("holm_adjustment")
+        != "ten-method-pairs-separately-within-each-endpoint-family"
+        or analysis.get("p_values_are_supplementary") is not True
+    ):
+        raise ValueError("primary Wave B analysis differs from the D063 pre-registration")
+    interpretation = _require_mapping(payload.get("interpretation"), "interpretation")
+    if (
+        interpretation.get("primary_contribution")
+        != "reliable-budget-allocation-and-degradation-avoidance"
+        or interpretation.get("raw_speed_superiority_claim") is not False
+        or interpretation.get("p99_unit") != "milliseconds"
+        or interpretation.get("qlognparego_vs_qlognehvi_ranking_prohibited") is not True
+        or interpretation.get("multiobjective_family_interpretation") is not True
+    ):
+        raise ValueError("primary Wave B interpretation guard differs from D063")
+    runtime = _require_mapping(payload.get("runtime"), "runtime")
+    if (
+        runtime.get("physical_observations") != 262
+        or runtime.get("projected_restore_inclusive_hours") != 121.01
+        or runtime.get("external_operator_boundary") is not True
+        or runtime.get("agent_must_not_launch_benchmark") is not True
+    ):
+        raise ValueError("primary Wave B runtime boundary differs from D063")
+    apply_best = _require_mapping(payload.get("apply_best"), "apply_best")
+    if (
+        apply_best.get("authorized_by_this_manifest") is not False
+        or apply_best.get("must_follow_terminal_wave_b_and_combined_report") is not True
+        or apply_best.get("separate_recoverable_workflow_required") is not True
+    ):
+        raise ValueError("primary Wave B must not authorize apply-best")
+    prerequisites = _require_mapping(payload.get("prerequisites"), "prerequisites")
+    implementation = _require_mapping(payload.get("implementation"), "implementation")
+    if implementation.get("schema_migration") != "041_v2_primary_wave_b":
+        raise ValueError("primary Wave B must use migration 041")
+    expected_commands = {
+        "v2-primary-wave-b-design-validate",
+        "v2-primary-wave-b-design-export",
+        "v2-primary-wave-b-validate",
+        "v2-primary-wave-b-create",
+        "v2-primary-wave-b-run-next",
+        "v2-primary-wave-b-run",
+        "v2-primary-wave-b-history",
+        "v2-primary-wave-b-analyze",
+        "v2-primary-wave-b-export",
+        "v2-primary-wave-b-report",
+        "v2-primary-final-analyze",
+        "v2-primary-final-export",
+        "v2-primary-final-report",
+    }
+    if status == "ready" and (
+        payload.get("execution_ready") is not True
+        or not all(prerequisites.values())
+        or implementation.get("module") != "charmdb.v2.primary_wave_b"
+        or implementation.get("decision") != "D064"
+        or set(implementation.get("commands", [])) != expected_commands
+    ):
+        raise ValueError("ready primary Wave B requires its complete durable implementation")
+
+
 def _validate_screening_amendment(payload: dict[str, Any], role: str) -> None:
     if role != "CALIBRATION":
         raise ValueError("screening interpretation amendment must remain CALIBRATION evidence")
@@ -483,9 +623,7 @@ def _validate_multi_fidelity(payload: dict[str, Any], role: str, status: str) ->
     phase_b = _require_mapping(payload.get("phase_b"), "phase_b")
     schedule = _require_mapping(phase_b.get("schedule"), "phase_b.schedule")
     profile = _require_mapping(phase_b.get("benchmark_profile"), "phase_b.benchmark_profile")
-    live_promotion = _require_mapping(
-        phase_b.get("promotion_rule"), "phase_b.promotion_rule"
-    )
+    live_promotion = _require_mapping(phase_b.get("promotion_rule"), "phase_b.promotion_rule")
     continuation = _require_mapping(
         phase_b.get("continuation_contract"), "phase_b.continuation_contract"
     )
@@ -534,15 +672,13 @@ def _validate_multi_fidelity(payload: dict[str, Any], role: str, status: str) ->
         live_promotion.get("p99_is_objective_not_constraint") is not True
         or live_promotion.get("requires_zero_f2_transaction_failures") is not True
         or live_promotion.get("throughput_floor_ratio") != 0.8
-        or live_promotion.get("reference")
-        != "most-recent-preceding-control-f2-throughput"
+        or live_promotion.get("reference") != "most-recent-preceding-control-f2-throughput"
     ):
         raise ValueError("multi-fidelity Phase B promotion rule differs from D054")
     if (
         continuation.get("same_restored_database_state") is not True
         or continuation.get("no_restore_restart_or_warmup_between_stages") is not True
-        or continuation.get("client_process_reconnect_between_60-and-540-second-stages")
-        is not True
+        or continuation.get("client_process_reconnect_between_60-and-540-second-stages") is not True
         or continuation.get("persist_reconnect_gap_seconds") is not True
         or continuation.get("aggregate_both_stage_transaction_logs_for_promoted-F3-objectives")
         is not True
@@ -702,9 +838,11 @@ def validate_manifest(payload: dict[str, Any], *, path: Path | None = None) -> P
         _validate_multi_fidelity(payload, role, status)
     if stage == "f4-confirmation":
         _validate_f4_confirmation(payload, role, status)
+    if stage == "primary-wave-b":
+        _validate_primary_wave_b(payload, role, status)
     if stage == "screening-interpretation-amendment":
         _validate_screening_amendment(payload, role)
-    if role == "PRIMARY":
+    if role == "PRIMARY" and stage != "primary-wave-b":
         _validate_primary(payload, status)
     return ProtocolManifest(
         path=path or Path("<memory>"),

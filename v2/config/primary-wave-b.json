@@ -1,0 +1,129 @@
+{
+  "protocol_id": "thesis-protocol-v2",
+  "schema_version": 1,
+  "stage": "primary-wave-b",
+  "status": "ready",
+  "evidence_role": "PRIMARY",
+  "operator_triggered": true,
+  "execution_ready": true,
+  "artifact_root": "artifacts-newpc/v2/primary-wave-b",
+  "candidate_restore_gate": "required",
+  "prerequisites": {
+    "d063_preregistration_committed_before_wave_b": true,
+    "wave_a_terminal_analysis_authenticated": true,
+    "wave_a_reported_separately": true,
+    "durable_wave_b_runner_implemented": true,
+    "standalone_wave_b_analysis_implemented": true,
+    "combined_five_seed_analysis_implemented": true
+  },
+  "source_evidence": {
+    "wave_a_manifest_path": "v2/config/primary-comparison.json",
+    "wave_a_manifest_sha256": "c576afa6eae9e7a44a6abad61096943494f0cd7875bd999fb66750f067e7baa9",
+    "wave_a_campaign_id": "b0619879-c807-4ee3-859e-2c2dbec9934e",
+    "wave_a_primary_block_id": "6f713338-78fe-5cc5-81f9-810de1684c2e",
+    "wave_a_analysis_payload_sha256": "fa6263830e5081a64943c1057083450076a32279a191bb889dc66944cbda8f21",
+    "wave_a_analysis_file_sha256": "7580e1594a966167821c2b0720261c0580d70634f335811caa898e319e6e2ff1",
+    "preregistration_path": "v2/docs/wave-b-final-analysis-preregistration.md",
+    "preregistration_sha256": "6733a2888fbb6a5c792d550f8e13c64498b9ce126f205254385111056b087289",
+    "preregistration_commit": "efdf811",
+    "wave_a_results_not_used_to_change_protocol": true
+  },
+  "wave_b": {
+    "status": "authorized-after-readiness",
+    "seed_count": 2,
+    "seeds": [1902413987, 740267717],
+    "candidate_budget_per_method": 30,
+    "physical_observations_per_seed": 131,
+    "physical_observations": 262,
+    "report_standalone_before_combined": true
+  },
+  "execution_schedule": {
+    "kind": "temporally-interleaved-rounds",
+    "schedule_seed": 1527323437,
+    "schedule_seed_derivation": {
+      "algorithm": "sha256-first-32-bits-mod-2147483647",
+      "label": "thesis-protocol-v2/primary-comparison/wave-b/schedule/1"
+    },
+    "schedule_sha256": "4b71b1b992c210dfb29aace7e15c99151a65d985537f32121597e3205f5f8c6e",
+    "candidate_design_sha256": "679505326616f2c4eb1fdeccd1081a0d22896fd82d0bf5452ac1ddf8cf931358",
+    "default_controls_per_seed": 5,
+    "control_positions": [1, 34, 66, 99, 131],
+    "shared_bo_initial_size": 12
+  },
+  "frozen_protocol_inheritance": {
+    "source": "v2/config/primary-comparison.json",
+    "preserve_search_methods": true,
+    "preserve_search_space": true,
+    "preserve_benchmark_profile": true,
+    "preserve_hard_safety_and_validity_gates": true,
+    "preserve_infrastructure_retry_policy": true,
+    "preserve_drift_interpretation": true,
+    "preserve_hypervolume_reference_point": true,
+    "preserve_endpoint_formulas": true,
+    "preserve_multiplicity_families": true
+  },
+  "analysis": {
+    "independent_unit": "seed",
+    "registered_endpoints": [
+      "hypervolume_at_0_negative_40",
+      "best_throughput_tps",
+      "minimum_p99_ms",
+      "mean_control_relative_tps",
+      "mean_control_relative_p99_ms"
+    ],
+    "standalone_wave_b_first": true,
+    "combined_seed_count": 5,
+    "combined_rule": "append-two-wave-b-seed-level-values-to-three-authenticated-wave-a-seed-level-values",
+    "candidate_rows_are_not_independent_replicates": true,
+    "endpoints_are_not_independent_confirmations": true,
+    "permutation_test": "exact-two-sided-paired-sign-flip",
+    "minimum_unadjusted_two_sided_p_at_five_seeds": 0.0625,
+    "one_sided_0_03125_not_registered": true,
+    "holm_adjustment": "ten-method-pairs-separately-within-each-endpoint-family",
+    "p_values_are_supplementary": true
+  },
+  "interpretation": {
+    "primary_contribution": "reliable-budget-allocation-and-degradation-avoidance",
+    "raw_speed_superiority_claim": false,
+    "p99_unit": "milliseconds",
+    "approximately_one_ms_at_26_ms_is_modest": true,
+    "qlognparego_vs_qlognehvi_ranking_prohibited": true,
+    "multiobjective_family_interpretation": true,
+    "scope": "one-pgbench-tpc-b-like-oltp-workload-at-scale-500-concurrency-32-on-recorded-environment"
+  },
+  "runtime": {
+    "projected_restore_inclusive_hours": 121.01,
+    "physical_observations": 262,
+    "retries_and_operator_gaps_excluded": true,
+    "external_operator_boundary": true,
+    "agent_must_not_launch_benchmark": true
+  },
+  "implementation": {
+    "decision": "D064",
+    "schema_migration": "041_v2_primary_wave_b",
+    "module": "charmdb.v2.primary_wave_b",
+    "commands": [
+      "v2-primary-wave-b-design-validate",
+      "v2-primary-wave-b-design-export",
+      "v2-primary-wave-b-validate",
+      "v2-primary-wave-b-create",
+      "v2-primary-wave-b-run-next",
+      "v2-primary-wave-b-run",
+      "v2-primary-wave-b-history",
+      "v2-primary-wave-b-analyze",
+      "v2-primary-wave-b-export",
+      "v2-primary-wave-b-report",
+      "v2-primary-final-analyze",
+      "v2-primary-final-export",
+      "v2-primary-final-report"
+    ],
+    "create_exactly_one_campaign": true,
+    "stop_after_campaign_creation_with_zero_observations": true
+  },
+  "apply_best": {
+    "authorized_by_this_manifest": false,
+    "must_follow_terminal_wave_b_and_combined_report": true,
+    "separate_recoverable_workflow_required": true
+  },
+  "unresolved_decisions": []
+}

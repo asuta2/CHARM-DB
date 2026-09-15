@@ -5,25 +5,25 @@ description = "Contextual, Holistic, Adaptive, Risk-aware, Multi-fidelity Postgr
 requires-python = ">=3.12,<3.14"
 dependencies = [
   "botorch>=0.17,<0.18",
-  "fastapi>=0.116,<0.118",
+  "numpy>=2.5,<2.6",
   "psycopg[binary]>=3.2.9,<3.4",
   "pydantic>=2.11,<3",
   "pydantic-settings>=2.10,<3",
-  "river>=0.22,<0.24",
-  "scikit-learn>=1.8,<2",
+  "scipy>=1.18,<1.19",
+  "torch>=2.13,<2.14",
   "typer>=0.16,<0.21",
-  "uvicorn>=0.35,<0.39",
 ]
 
 [project.optional-dependencies]
 dev = [
-  "httpx>=0.28,<0.29",
   "mypy>=1.17,<1.20",
-  "pillow>=12.3,<13",
   "pytest>=8.4,<9.1",
   "pytest-cov>=6.2,<8",
-  "python-docx>=1.2,<2",
   "ruff>=0.12,<0.16",
+]
+docs = [
+  "pillow>=12.3,<13",
+  "python-docx>=1.2,<2",
 ]
 
 [project.scripts]

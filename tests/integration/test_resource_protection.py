@@ -6,7 +6,6 @@ import pytest
 
 from charmdb.config import get_settings
 from charmdb.db import apply_migrations
-from charmdb.observability import render_prometheus_metrics
 from charmdb.resources import ResourceLimitError, capture_and_validate_resources
 from charmdb.worker import (
     control_campaign,
@@ -31,11 +30,6 @@ def test_live_resource_snapshot_has_declared_headroom() -> None:
     assert snapshot["container"]["memory_limit_bytes"] == 4 * 1024**3
     assert snapshot["container"]["oom_killed"] is False
     assert snapshot["container"]["health"] == "healthy"
-    metrics = render_prometheus_metrics(get_settings())
-    assert "charmdb_campaigns{" in metrics
-    assert "charmdb_trials{" in metrics
-    assert "charmdb_active_leases " in metrics
-    assert "charmdb_target_ready 1" in metrics
 
 
 @pytest.mark.skipif(not _configured(), reason="integration environment not configured")

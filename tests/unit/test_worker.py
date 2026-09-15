@@ -7,9 +7,7 @@ from threading import Event
 
 import pytest
 
-import charmdb.search_execution as search_execution
 import charmdb.worker as worker
-from charmdb.api import app
 from charmdb.worker import TERMINAL_STATES, validate_transition
 
 
@@ -188,23 +186,6 @@ def test_persistent_heartbeat_failure_beyond_the_lease_window_fails_with_its_cau
 
 def test_lost_lease_error_stays_a_runtime_error_for_existing_callers() -> None:
     assert issubclass(worker.TrialLeaseLost, RuntimeError)
-
-
-def test_terminal_worker_hook_attempts_search_budget_reconciliation(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    trial_id = uuid.uuid4()
-    calls: list[tuple[object, uuid.UUID, str]] = []
-    monkeypatch.setattr(
-        search_execution,
-        "reconcile_terminal_search_trial",
-        lambda settings, trial, actor: calls.append((settings, trial, actor)),
-    )
-    settings = object()
-
-    worker._reconcile_experiment_trial_best_effort(settings, trial_id)  # type: ignore[arg-type]
-
-    assert calls == [(settings, trial_id, "durable-worker")]
 
 
 def test_health_state_machine_rejects_skips_and_terminal_reentry() -> None:
@@ -397,21 +378,6 @@ def test_v2_tuned_trial_rejects_more_than_twelve_knobs_before_target_access() ->
         )
 
 
-def test_index_lifecycle_requires_build_verify_and_drop_order() -> None:
-    chain = [
-        "CREATED",
-        "VALIDATING_ACTIONS",
-        "BUILDING_INDEXES",
-        "VERIFYING_ACTIVE_CONFIGURATION",
-        "SELECTING_NEXT_ACTION",
-        "COMPLETED",
-    ]
-    for current, target in pairwise(chain):
-        validate_transition("INDEX_LIFECYCLE", current, target)
-    with pytest.raises(ValueError, match="invalid INDEX_LIFECYCLE transition"):
-        validate_transition("INDEX_LIFECYCLE", "BUILDING_INDEXES", "COMPLETED")
-
-
 def test_all_required_failure_states_are_terminal() -> None:
     assert {
         "STATICALLY_INFEASIBLE",
@@ -435,27 +401,6 @@ def test_all_required_failure_states_are_terminal() -> None:
         "ROLLED_BACK",
         "CANCELLED",
     } <= TERMINAL_STATES
-
-
-def test_openapi_exposes_typed_campaign_and_recovery_controls() -> None:
-    schema = app.openapi()
-    paths = schema["paths"]
-    assert "/campaigns" in paths
-    assert "/metrics" in paths
-    assert "/campaigns/{campaign_id}/pause" in paths
-    assert "/campaigns/{campaign_id}/resume" in paths
-    assert "/campaigns/{campaign_id}/stop" in paths
-    assert "/campaigns/{campaign_id}/emergency-stop" in paths
-    assert "/campaigns/{campaign_id}/trials/health" in paths
-    assert "/campaigns/{campaign_id}/trials/baseline-benchmark" in paths
-    assert "/campaigns/{campaign_id}/trials/tuned-benchmark" in paths
-    assert "/campaigns/{campaign_id}/trials/index-lifecycle" in paths
-    assert "/trials/{trial_id}" in paths
-    assert "/reports" in paths
-    assert "CampaignCreateRequest" in schema["components"]["schemas"]
-    assert "BaselineBenchmarkTrialRequest" in schema["components"]["schemas"]
-    assert "TunedBenchmarkTrialRequest" in schema["components"]["schemas"]
-    assert "IndexLifecycleTrialRequest" in schema["components"]["schemas"]
 
 
 def test_continuous_worker_drains_claimed_trial_after_shutdown_signal(

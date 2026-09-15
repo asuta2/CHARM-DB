@@ -1,4 +1,4 @@
-from charmdb.manifest_preflight import (
+from charmdb.restore.preflight import (
     CANONICAL_SNAPSHOT_FILENAME,
     assess_manifest_evidence,
     normalize_schema_dump,

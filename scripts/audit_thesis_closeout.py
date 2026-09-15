@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree
 
-from charmdb.v2.primary_reporting import render_primary_report
+from charmdb.reporting.primary import render_primary_report
 
 MANIFEST_SHA = "8fcfee8eca196a966f86d16ab6e2b7ea91b3f4bfd401ac360dd7e11b7c807e96"
 ANALYSIS_SHA = "769f5a0eabdebe272a0a8ae4b7578fd54f72d4a95cd53822e1cb993466a36fb2"

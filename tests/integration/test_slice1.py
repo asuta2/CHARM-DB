@@ -6,7 +6,6 @@ import pytest
 import charmdb.controller as controller
 from charmdb.config import get_settings
 from charmdb.db import connect
-from charmdb.indexing import run_index_experiment, seed_index_fixture
 
 pytestmark = pytest.mark.integration
 
@@ -60,20 +59,3 @@ def test_failed_verification_automatically_rolls_back(monkeypatch: pytest.Monkey
         )
         row = cur.fetchone()
         assert row == {"status": "ROLLED_BACK", "rollbacks": 1}
-
-
-@pytest.mark.skipif(
-    not (os.getenv("CHARMDB_TARGET_DSN") or Path(".env").exists()),
-    reason="integration environment not configured",
-)
-def test_managed_index_lifecycle_builds_uses_and_drops() -> None:
-    settings = get_settings()
-    seed_index_fixture(settings, rows=50_000)
-    result = run_index_experiment(settings, customer_id=4242)
-    assert result.index_used
-    assert result.index_size_bytes > 0
-    assert result.build_duration_seconds > 0
-    with connect(settings.target_dsn) as conn, conn.cursor() as cur:
-        cur.execute("SELECT to_regclass(%s) AS relation", (f"public.{result.index_name}",))
-        row = cur.fetchone()
-        assert row is not None and row["relation"] is None

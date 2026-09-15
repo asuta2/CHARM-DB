@@ -25,26 +25,13 @@ from charmdb.controller import (
     validate_candidate,
 )
 from charmdb.db import connect
-from charmdb.indexing import (
-    IndexCandidate,
-    QueryEvidence,
-    inspect_index_catalog,
-    load_candidate,
-    make_candidate,
-    persist_candidate,
-    reconcile_or_build_index,
-    reconcile_or_drop_index,
-    validate_candidate_catalog,
-    verify_index_absent,
-    verify_index_active,
-)
 from charmdb.metrics import capture_snapshot, numeric_difference
 from charmdb.resources import (
     ResourceLimitError,
     capture_and_validate_resources,
     capture_runtime_resource_sample,
 )
-from charmdb.v2.candidate_restore import (
+from charmdb.restore.candidate import (
     candidate_restore_result_dict,
     ensure_candidate_dataset_restored,
     verify_trial_candidate_restore,
@@ -209,27 +196,6 @@ V2_TUNED_BENCHMARK_TRANSITIONS.update(
     }
 )
 
-INDEX_LIFECYCLE_TRANSITIONS: dict[str, frozenset[str]] = {
-    "CREATED": frozenset({"VALIDATING_ACTIONS", "CANCELLED"}),
-    "VALIDATING_ACTIONS": frozenset(
-        {"BUILDING_INDEXES", "INVALID_CONFIGURATION", "RESOURCE_LIMIT_EXCEEDED", "CANCELLED"}
-    ),
-    "BUILDING_INDEXES": frozenset(
-        {"VERIFYING_ACTIVE_CONFIGURATION", "INDEX_BUILD_FAILED", "CANCELLED"}
-    ),
-    "VERIFYING_ACTIVE_CONFIGURATION": frozenset(
-        {"SELECTING_NEXT_ACTION", "INDEX_BUILD_FAILED", "CANCELLED"}
-    ),
-    "SELECTING_NEXT_ACTION": frozenset(
-        {
-            "COMPLETED",
-            "MEASUREMENT_INVALID",
-            "INDEX_DROP_FAILED",
-            "RESOURCE_LIMIT_EXCEEDED",
-            "CANCELLED",
-        }
-    ),
-}
 
 
 @dataclass(frozen=True)
@@ -301,10 +267,6 @@ def validate_transition(workflow_kind: str, current: str, target: str) -> None:
             raise ValueError(
                 f"invalid {SATURATION_PHASE1_WORKFLOW} transition {current} -> {target}"
             )
-    if workflow_kind == "INDEX_LIFECYCLE":
-        allowed = INDEX_LIFECYCLE_TRANSITIONS.get(current, frozenset())
-        if target not in allowed:
-            raise ValueError(f"invalid INDEX_LIFECYCLE transition {current} -> {target}")
 
 
 def create_campaign(
@@ -970,113 +932,6 @@ def create_v2_tuned_benchmark_trial(
     return trial_id
 
 
-def create_index_lifecycle_trial(
-    settings: Settings,
-    campaign_id: uuid.UUID,
-    schema_name: str,
-    table_name: str,
-    key_columns: tuple[str, ...],
-    include_columns: tuple[str, ...],
-    seed: int,
-    idempotency_key: str,
-    max_attempts: int = 3,
-) -> uuid.UUID:
-    if not idempotency_key.strip():
-        raise ValueError("idempotency_key cannot be empty")
-    if not 1 <= len(key_columns) <= 3:
-        raise ValueError("index lifecycle requires one to three key columns")
-    if len(include_columns) > 2:
-        raise ValueError("index lifecycle allows at most two INCLUDE columns")
-    if max_attempts < 1:
-        raise ValueError("max_attempts must be positive")
-    candidate = make_candidate(
-        QueryEvidence(
-            schema_name,
-            table_name,
-            key_columns,
-            projection_columns=include_columns,
-            frequency=1,
-            query_template="durable managed-index lifecycle",
-        )
-    )
-    with connect(settings.control_dsn) as conn, conn.cursor() as cur:
-        cur.execute(
-            "SELECT status,emergency_stop FROM charm_control.campaigns WHERE campaign_id=%s",
-            (campaign_id,),
-        )
-        campaign = cur.fetchone()
-        if campaign is None:
-            raise ValueError(f"unknown campaign {campaign_id}")
-        if campaign["status"] not in {"CREATED", "RUNNING", "PAUSED"}:
-            raise ValueError(f"campaign does not accept trials in state {campaign['status']}")
-        if campaign["emergency_stop"]:
-            raise ValueError("campaign emergency stop is active")
-        cur.execute(
-            """SELECT trial_id FROM charm_control.trials
-               WHERE campaign_id=%s AND idempotency_key=%s""",
-            (campaign_id, idempotency_key),
-        )
-        existing = cur.fetchone()
-        if existing is not None:
-            return existing["trial_id"]  # type: ignore[no-any-return]
-        cur.execute(
-            """SELECT trial_id FROM charm_control.trials
-               WHERE completed_at IS NULL
-                 AND requested_configuration->>'index_candidate_id'=%s
-               LIMIT 1""",
-            (str(candidate.candidate_id),),
-        )
-        active = cur.fetchone()
-        if active is not None:
-            raise ValueError(
-                f"index candidate already belongs to incomplete trial {active['trial_id']}"
-            )
-    persist_candidate(settings, candidate)
-    validate_candidate_catalog(settings, candidate)
-    trial_id = uuid.uuid4()
-    action_id = uuid.uuid5(uuid.NAMESPACE_URL, f"charmdb:{trial_id}:index-action")
-    requested = {
-        "index_candidate_id": str(candidate.candidate_id),
-        "index_name": candidate.index_name,
-        "normalized_sql": candidate.normalized_sql,
-    }
-    payload = {
-        **requested,
-        "schema_name": candidate.schema_name,
-        "table_name": candidate.table_name,
-        "key_columns": list(candidate.key_columns),
-        "include_columns": list(candidate.include_columns),
-    }
-    with connect(settings.control_dsn) as conn, conn.cursor() as cur:
-        cur.execute(
-            """INSERT INTO charm_control.trials
-            (trial_id,campaign_id,state,benchmark_profile,fidelity,random_seed,
-             requested_configuration,workflow_kind,workflow_payload,max_attempts,idempotency_key)
-            VALUES (%s,%s,'CREATED','durable-index-lifecycle',0,%s,%s,
-                    'INDEX_LIFECYCLE',%s,%s,%s)""",
-            (
-                trial_id,
-                campaign_id,
-                seed,
-                Jsonb(requested),
-                Jsonb(payload),
-                max_attempts,
-                idempotency_key,
-            ),
-        )
-        cur.execute(
-            """INSERT INTO charm_control.trial_actions
-            (action_id,trial_id,proposed_index_ids) VALUES (%s,%s,%s)""",
-            (action_id, trial_id, [candidate.candidate_id]),
-        )
-        cur.execute(
-            """INSERT INTO charm_control.trial_transitions
-            (trial_id,from_state,to_state,reason,details)
-            VALUES (%s,NULL,'CREATED','durable index lifecycle trial created',%s)""",
-            (trial_id, Jsonb(payload)),
-        )
-        conn.commit()
-    return trial_id
 
 
 def claim_next_trial(
@@ -1889,22 +1744,6 @@ def _complete_trial(settings: Settings, lease: TrialLease) -> None:
         if cur.rowcount != 1:
             raise RuntimeError("cannot complete trial without its lease")
         conn.commit()
-    _reconcile_experiment_trial_best_effort(settings, lease.trial_id)
-
-
-def _reconcile_experiment_trial_best_effort(settings: Settings, trial_id: uuid.UUID) -> None:
-    try:
-        from charmdb.search_execution import reconcile_terminal_search_trial
-
-        reconcile_terminal_search_trial(settings, trial_id, "durable-worker")
-    except Exception as error:
-        with connect(settings.control_dsn) as conn, conn.cursor() as cur:
-            cur.execute(
-                """UPDATE charm_control.trials
-                   SET diagnostic_details=diagnostic_details || %s WHERE trial_id=%s""",
-                (Jsonb({"experiment_budget_reconciliation_error": str(error)}), trial_id),
-            )
-            conn.commit()
 
 
 def _fail_trial(
@@ -1969,231 +1808,16 @@ def _fail_trial(
                 ),
             )
         conn.commit()
-    if terminal:
-        _reconcile_experiment_trial_best_effort(settings, lease.trial_id)
 
 
-def _lease_index_candidate(settings: Settings, lease: TrialLease) -> IndexCandidate:
-    candidate_id = uuid.UUID(str(lease.payload["index_candidate_id"]))
-    return load_candidate(settings, candidate_id)
 
 
-def _validate_index_lifecycle(settings: Settings, lease: TrialLease) -> dict[str, Any]:
-    candidate = _lease_index_candidate(settings, lease)
-    catalog = inspect_index_catalog(settings, candidate)
-    if catalog is not None:
-        raise ValueError(f"managed index already exists before build: {candidate.index_name}")
-    with connect(settings.control_dsn) as conn, conn.cursor() as cur:
-        cur.execute(
-            "SELECT managed,state FROM charm_control.index_candidates WHERE candidate_id=%s",
-            (candidate.candidate_id,),
-        )
-        row = cur.fetchone()
-    if row is None or not row["managed"] or row["state"] != "VALIDATED":
-        raise ValueError(f"index candidate is not in managed VALIDATED state: {row}")
-    resources = capture_and_validate_resources(settings)
-    return {
-        "candidate_id": str(candidate.candidate_id),
-        "index_name": candidate.index_name,
-        "normalized_sql": candidate.normalized_sql,
-        "managed": True,
-        "resource_snapshot": resources,
-    }
 
 
-def _verify_index_lifecycle_active(settings: Settings, lease: TrialLease) -> dict[str, Any]:
-    candidate = _lease_index_candidate(settings, lease)
-    catalog = verify_index_active(settings, candidate)
-    return {
-        "candidate_id": str(candidate.candidate_id),
-        "index_name": candidate.index_name,
-        "valid": bool(catalog["indisvalid"]),
-        "ready": bool(catalog["indisready"]),
-        "size_bytes": int(catalog["size_bytes"]),
-        "key_columns": list(catalog["key_columns"]),
-        "include_columns": list(catalog["include_columns"]),
-    }
 
 
-def _drop_and_persist_index_lifecycle(settings: Settings, lease: TrialLease) -> dict[str, Any]:
-    candidate = _lease_index_candidate(settings, lease)
-    build = _completed_action_result(settings, lease.trial_id, "BUILDING_INDEXES")
-    if build is None:
-        raise RuntimeError("completed index build action has no result")
-    drop = reconcile_or_drop_index(
-        settings,
-        candidate,
-        "durable lifecycle cleanup after active verification",
-    )
-    verify_index_absent(settings, candidate)
-    resources = capture_and_validate_resources(settings)
-    result = {
-        "candidate_id": str(candidate.candidate_id),
-        "index_name": candidate.index_name,
-        "definition_hash": candidate.definition_hash,
-        "build": build,
-        "drop": drop,
-        "managed_drop_verified": True,
-        "measurement_complete": bool(build.get("measurement_complete", False)),
-        "resource_snapshot": resources,
-    }
-    output_dir = _benchmark_output_dir(settings, lease)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    artifact = output_dir / "index-lifecycle.json"
-    temporary = output_dir / "index-lifecycle.json.tmp"
-    temporary.write_text(json.dumps(result, indent=2, default=str), encoding="utf-8")
-    temporary.replace(artifact)
-    relative = artifact.relative_to(settings.artifact_dir)
-    digest = _sha256(artifact)
-    operational_cost = {
-        "index_build_seconds": build.get("duration_seconds"),
-        "index_build_wal_bytes": build.get("wal_bytes"),
-        "index_size_bytes": build.get("size_bytes"),
-        "index_drop_seconds": drop.get("duration_seconds"),
-    }
-    with connect(settings.control_dsn) as conn, conn.cursor() as cur:
-        cur.execute(
-            """UPDATE charm_control.trial_actions
-            SET indexes_created=%s,indexes_removed=%s,operational_cost=%s
-            WHERE trial_id=%s""",
-            (
-                [candidate.candidate_id],
-                [candidate.candidate_id],
-                Jsonb(operational_cost),
-                lease.trial_id,
-            ),
-        )
-        cur.execute(
-            """UPDATE charm_control.trials
-            SET active_configuration='{}'::jsonb,objective_values=%s,constraint_values=%s,
-                workflow_result=%s
-            WHERE trial_id=%s""",
-            (
-                Jsonb(operational_cost),
-                Jsonb(
-                    {
-                        "managed_drop_verified": True,
-                        "measurement_complete": result["measurement_complete"],
-                    }
-                ),
-                Jsonb(result),
-                lease.trial_id,
-            ),
-        )
-        cur.execute(
-            """INSERT INTO charm_control.artifacts
-            (artifact_id,trial_id,kind,relative_path,sha256,byte_size)
-            VALUES (%s,%s,'durable-index-lifecycle-json',%s,%s,%s)
-            ON CONFLICT (trial_id,relative_path) DO UPDATE
-            SET sha256=EXCLUDED.sha256,byte_size=EXCLUDED.byte_size""",
-            (
-                uuid.uuid5(uuid.NAMESPACE_URL, f"charmdb:{lease.trial_id}:index-artifact"),
-                lease.trial_id,
-                str(relative),
-                digest,
-                artifact.stat().st_size,
-            ),
-        )
-        conn.commit()
-    return {
-        **result,
-        "artifact_relative_path": str(relative),
-        "artifact_sha256": digest,
-        "byte_size": artifact.stat().st_size,
-    }
 
 
-def _run_index_lifecycle_once(
-    settings: Settings,
-    lease: TrialLease,
-    stale: bool,
-    stop_after_state: str | None,
-) -> WorkerResult:
-    state = lease.state
-
-    def stopped() -> WorkerResult | None:
-        if stop_after_state == state:
-            return WorkerResult(True, lease.trial_id, state, stale)
-        return None
-
-    if result := stopped():
-        return result
-    if state == "CREATED":
-        _advance(
-            settings,
-            lease,
-            state,
-            "VALIDATING_ACTIONS",
-            "index validation transition persisted before catalog inspection",
-        )
-        state = "VALIDATING_ACTIONS"
-        if result := stopped():
-            return result
-    if state == "VALIDATING_ACTIONS":
-        _run_action(
-            settings,
-            lease,
-            state,
-            lambda: _validate_index_lifecycle(settings, lease),
-        )
-        _advance(settings, lease, state, "BUILDING_INDEXES", "managed candidate validated")
-        state = "BUILDING_INDEXES"
-        if result := stopped():
-            return result
-    if state == "BUILDING_INDEXES":
-        candidate = _lease_index_candidate(settings, lease)
-        _run_action(
-            settings,
-            lease,
-            state,
-            lambda: reconcile_or_build_index(settings, candidate),
-        )
-        _advance(
-            settings,
-            lease,
-            state,
-            "VERIFYING_ACTIVE_CONFIGURATION",
-            "managed index build reconciled",
-        )
-        state = "VERIFYING_ACTIVE_CONFIGURATION"
-        if result := stopped():
-            return result
-    if state == "VERIFYING_ACTIVE_CONFIGURATION":
-        _run_action(
-            settings,
-            lease,
-            state,
-            lambda: _verify_index_lifecycle_active(settings, lease),
-        )
-        _advance(
-            settings,
-            lease,
-            state,
-            "SELECTING_NEXT_ACTION",
-            "managed index catalog definition verified",
-        )
-        state = "SELECTING_NEXT_ACTION"
-        if result := stopped():
-            return result
-    if state == "SELECTING_NEXT_ACTION":
-        persisted = _run_action(
-            settings,
-            lease,
-            state,
-            lambda: _drop_and_persist_index_lifecycle(settings, lease),
-        )
-        target = "COMPLETED" if persisted["measurement_complete"] else "MEASUREMENT_INVALID"
-        _advance(
-            settings,
-            lease,
-            state,
-            target,
-            "managed index removed and durable lifecycle evidence persisted",
-        )
-        state = target
-    if state in {"COMPLETED", "MEASUREMENT_INVALID"}:
-        _complete_trial(settings, lease)
-    return WorkerResult(True, lease.trial_id, state, stale)
 
 
 def _run_benchmark_once(
@@ -2593,38 +2217,6 @@ def run_once(
     lease, stale = claim_next_trial(settings, worker_id, lease_seconds, campaign_id)
     if lease is None:
         return WorkerResult(False, None, None, False)
-    if lease.workflow_kind == "INDEX_LIFECYCLE":
-        try:
-            return _run_index_lifecycle_once(settings, lease, stale, stop_after_state)
-        except Exception as error:
-            state = lease.state
-            with connect(settings.control_dsn) as conn, conn.cursor() as cur:
-                cur.execute(
-                    "SELECT state FROM charm_control.trials WHERE trial_id=%s", (lease.trial_id,)
-                )
-                row = cur.fetchone()
-                if row is not None:
-                    state = str(row["state"])
-            try:
-                candidate = _lease_index_candidate(settings, lease)
-                reconcile_or_drop_index(
-                    settings,
-                    candidate,
-                    f"cleanup after durable index worker error: {error}",
-                )
-                verify_index_absent(settings, candidate)
-            except Exception as cleanup_error:
-                error = RuntimeError(f"{error}; managed index cleanup failed: {cleanup_error}")
-            if isinstance(error, ResourceLimitError):
-                terminal = "RESOURCE_LIMIT_EXCEEDED"
-            elif state in {"BUILDING_INDEXES", "VERIFYING_ACTIVE_CONFIGURATION"}:
-                terminal = "INDEX_BUILD_FAILED"
-            elif state == "SELECTING_NEXT_ACTION":
-                terminal = "INDEX_DROP_FAILED"
-            else:
-                terminal = "INVALID_CONFIGURATION"
-            _fail_trial(settings, lease, error, terminal)
-            raise
     if lease.workflow_kind in {
         "BASELINE_BENCHMARK",
         "TUNED_BENCHMARK",

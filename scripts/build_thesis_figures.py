@@ -3,7 +3,7 @@
 import argparse
 from pathlib import Path
 
-from charmdb.v2.thesis_figures import render
+from charmdb.reporting.figures import render
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)

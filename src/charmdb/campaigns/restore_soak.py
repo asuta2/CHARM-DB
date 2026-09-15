@@ -24,7 +24,7 @@ from charmdb.optimization.design import (
     PRIMARY_MANIFEST,
     primary_restore_soak_contract_sha256,
 )
-from charmdb.restore.candidate import (
+from charmdb.restore.fingerprint import (
     capture_live_fingerprint,
     compare_fingerprints,
     standardize_logical_restore_state,

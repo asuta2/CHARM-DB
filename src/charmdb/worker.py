@@ -1388,22 +1388,17 @@ def _execute_or_recover_measurement(
         def renew_lease() -> None:
             heartbeat(settings, lease, lease_seconds)
 
-        common = {
-            "progress_callback": renew_lease,
-            "poll_interval_seconds": poll_interval,
-            "application_name": application_name,
-            "client_threads": (
-                int(lease.payload["client_threads"])
-                if lease.payload.get("client_threads") is not None
-                else None
-            ),
-            "runtime_sample_callback": (
-                (lambda: capture_runtime_resource_sample(settings))
-                if lease.workflow_kind == SATURATION_PHASE1_WORKFLOW
-                or bool(lease.payload.get("runtime_samples_required"))
-                else None
-            ),
-        }
+        client_threads = (
+            int(lease.payload["client_threads"])
+            if lease.payload.get("client_threads") is not None
+            else None
+        )
+        runtime_sample_callback = (
+            (lambda: capture_runtime_resource_sample(settings))
+            if lease.workflow_kind == SATURATION_PHASE1_WORKFLOW
+            or bool(lease.payload.get("runtime_samples_required"))
+            else None
+        )
         if promotion_rule is None:
             execution = run_pgbench_measurement(
                 settings,
@@ -1412,7 +1407,11 @@ def _execute_or_recover_measurement(
                 int(lease.payload["concurrency"]),
                 int(lease.payload["seed"]),
                 lease.attempt_count,
-                **common,
+                progress_callback=renew_lease,
+                poll_interval_seconds=poll_interval,
+                application_name=application_name,
+                client_threads=client_threads,
+                runtime_sample_callback=runtime_sample_callback,
             )
         else:
             rule = dict(promotion_rule)
@@ -1427,7 +1426,11 @@ def _execute_or_recover_measurement(
                 lease.attempt_count,
                 float(rule["baseline_throughput_tps"]),
                 float(rule["throughput_floor_ratio"]),
-                **common,
+                progress_callback=renew_lease,
+                poll_interval_seconds=poll_interval,
+                application_name=application_name,
+                client_threads=client_threads,
+                runtime_sample_callback=runtime_sample_callback,
             )
         recovered_marker = False
     relative = execution.marker_path.relative_to(settings.artifact_dir)

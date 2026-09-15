@@ -39,7 +39,7 @@ from charmdb.config import Settings
 from charmdb.controller import discover_knobs, validate_candidate
 from charmdb.db import connect
 from charmdb.protocol import load_manifest
-from charmdb.restore.candidate import (
+from charmdb.restore.fingerprint import (
     capture_live_fingerprint,
     compare_fingerprints,
     standardize_logical_restore_state,

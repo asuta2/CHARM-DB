@@ -518,6 +518,8 @@ def run_apply_best_recovery_test(settings: Settings, deployment_id: uuid.UUID) -
                 (application_id,),
             )
             rollback_row = cur.fetchone()
+            if rollback_row is None:
+                raise RuntimeError("recovery test has no durable rollback record")
             result = {
                 "application_id": str(application_id),
                 "snapshot_id": str(application.snapshot_id),

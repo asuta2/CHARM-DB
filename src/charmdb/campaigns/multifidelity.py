@@ -24,7 +24,7 @@ from charmdb.controller import discover_knobs, validate_candidate
 from charmdb.db import connect
 from charmdb.optimization.design import PRIMARY_MANIFEST, primary_method_design
 from charmdb.protocol import load_manifest
-from charmdb.restore.candidate import capture_live_fingerprint, compare_fingerprints
+from charmdb.restore.fingerprint import capture_live_fingerprint, compare_fingerprints
 from charmdb.restore.preflight import _target_safety
 from charmdb.worker import (
     control_campaign,

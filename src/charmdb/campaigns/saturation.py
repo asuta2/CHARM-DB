@@ -15,7 +15,7 @@ from charmdb.controller import apply_configuration, discover_knobs, rollback_con
 from charmdb.db import connect
 from charmdb.protocol import load_manifest
 from charmdb.resources import capture_and_validate_resources
-from charmdb.restore.candidate import PGBENCH_RELATIONS, standardize_logical_restore_state
+from charmdb.restore.fingerprint import PGBENCH_RELATIONS, standardize_logical_restore_state
 from charmdb.restore.preflight import _target_safety
 from charmdb.worker import (
     SATURATION_PHASE1_WORKFLOW,

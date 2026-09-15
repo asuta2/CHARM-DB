@@ -5,6 +5,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import time
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
@@ -62,7 +63,7 @@ def _pgbench_maintenance_arguments() -> list[str]:
 
 
 def _windows_process_cpu_seconds(process: subprocess.Popen[str]) -> float | None:
-    if os.name != "nt":
+    if sys.platform != "win32":
         return None
     import ctypes
 
@@ -485,6 +486,8 @@ def run_pgbench_promoted_measurement(
         ),
     }
     command = [item for stage in stage_executions for item in stage.command]
+    stdout = "\n".join(item.stdout for item in stage_executions)
+    stderr = "\n".join(item.stderr for item in stage_executions)
     payload = {
         "attempt": attempt,
         "seed": seed,
@@ -494,8 +497,8 @@ def run_pgbench_promoted_measurement(
         "pgbench_maintenance_policy": PGBENCH_MAINTENANCE_POLICY,
         "command": command,
         "result": asdict(result),
-        "stdout": "\n".join(item.stdout for item in stage_executions),
-        "stderr": "\n".join(item.stderr for item in stage_executions),
+        "stdout": stdout,
+        "stderr": stderr,
         "runtime_telemetry": runtime_telemetry,
         "promotion": promotion,
         "completed_at": datetime.now(UTC).isoformat(),
@@ -506,8 +509,8 @@ def run_pgbench_promoted_measurement(
     return MeasurementExecution(
         result,
         command,
-        payload["stdout"],
-        payload["stderr"],
+        stdout,
+        stderr,
         marker_path,
         runtime_telemetry,
     )

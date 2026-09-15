@@ -4,15 +4,45 @@ CHARM-DB means **Contextual, Holistic, Adaptive, Risk-aware, Multi-fidelity Data
 
 ## Current status
 
-Protocol-v2 checkpoint D064 (2026-09-05) has implemented and live-validated the
-separately pre-registered Wave B continuation. Migration 041, the 262-slot deterministic
-design, durable runner, standalone two-seed report, and subsequent combined five-seed
-report are ready under manifest SHA-256 `35d0b57b...3c3e18`. D065 created the only
-Wave B campaign, `8d95edea-81e7-41eb-ba81-0997008cf4a8`, and audited all 262 frozen
-slots with zero observations. The approximately 121.010-hour run is now at the external
-operator boundary. Apply-best remains deferred.
+D072 (2026-09-14) completes the scoped [thesis evidence closeout](v2/docs/thesis-closeout.md).
+All 5,457 evidence files pass SHA-256 verification and the final report rerenders
+byte-identically. A safety-accounting erratum corrects first-attempt/retry confusion
+and shared-BO double counting: 655 physical observations, 657 attempts, two retries.
+Use that companion when citing the final report. Champion E remains active and
+healthy. Manuscript integration and a verified release/archive are the next steps;
+the broader legacy research program is not declared complete.
 
-The mandatory checkpoint was confirmed on 2026-07-12. Slices 1–15 foundations are implemented: isolated target/control databases, bounded knob/index optimization, fingerprints and drift detection, an explicit F0–F4 ladder, prequential calibration/risk comparison, compatibility-gated transfer, coordinated schedule construction, and measured-cost accounting. The durable worker now executes read-only health checks, default benchmarks, bounded reload- or restart-class knob benchmark trials, and managed index build/drop trials with renewable leases, stale recovery, idempotent state actions, atomic workload-completion markers, verified mutation, and final rollback/cleanup. A continuous service drains safely on signals, emits bounded JSON events, removes exact per-trial orphan database sessions, and applies pre/post disk/OOM/health/memory gates; bounded Prometheus application metrics are exposed. A migration-backed multi-objective development path now persists qLogNEHVI/qLogNParEGO recommendation identity, feasible Pareto snapshots, explicit context/fidelity, reconstruction metadata, and repeated-F4 candidate evidence. Its only executed multi-objective run is one-context development evidence, not an effectiveness result or robust champion. The risk gate remains closed, and Slices 13–15 do not yet have prospective equal-budget performance evidence.
+Protocol-v2 checkpoint D071 (2026-09-14) completes Wave B, the unified final
+five-seed primary report. The sole Wave B campaign,
+`8d95edea-81e7-41eb-ba81-0997008cf4a8`, completed all 262 frozen slots; its one
+D067 host-power interruption remains a non-consuming infrastructure attempt and
+the exact retry completed. D068 authenticated the standalone two-seed result as
+`COMPLETE_WITH_DRIFT_FLAGS` (analysis SHA-256 `c2486ee7...6db78ebb`) and rendered
+the required standalone report before any pooling.
+
+D069 implements D066 and combines exactly five seed-level values per
+method/endpoint. The final result is `COMPLETE_WITH_DRIFT_FLAGS` under analysis
+SHA-256 `769f5a0e...66a36fb2`. Its 17-file publication tree contains nine populated
+CSV tables, six valid deterministic SVG figures, Markdown, and a hash index
+(payload SHA-256 `5776d42c...1e02634`; index SHA-256
+`97a37d46...51747fd2`). A second render was byte-identical and no wave-presentation
+tokens occur in the combined Markdown, tables, or figures. The combined
+reliability result supports the registered budget-allocation claim: local-control
+domination is 13.3% for random, 18.7% for Sobol, and 63.3%-68.0% for the three
+Bayesian arms.
+
+D070 now implements and live-validates the separate recoverable apply-best
+workflow. The singleton deployment `c8e561f0...d84b2` passed `RECOVERY_TESTED`: champion
+`E` was applied through a durable snapshot, matched all eight active settings after
+restart, passed target-health checks, and rolled back to the exact captured defaults.
+The configuration SHA-256 is `96627a9e...d7a62`; the measured operator estimate is
+32 seconds for activation, 34 seconds for emergency rollback, and 96 seconds (1.6
+minutes) for the full reversible window. D071 records the operator's explicit authorization and persistently activates E on the
+same deployment. Its state is `ACTIVE`; all eight settings and target health pass
+verification, with no pending restart or active CHARM sessions. The pre-activation
+snapshot is retained for the dedicated rollback command.
+
+The mandatory checkpoint was confirmed on 2026-07-12. Slices 1–15 foundations are implemented: isolated target/control databases, bounded knob/index optimization, fingerprints and drift detection, an explicit F0–F4 ladder, prequential calibration/risk comparison, compatibility-gated transfer, coordinated schedule construction, and measured-cost accounting. The durable worker now executes read-only health checks, default benchmarks, bounded reload- or restart-class knob benchmark trials, and managed index build/drop trials with renewable leases, stale recovery, idempotent state actions, atomic workload-completion markers, verified mutation, and final rollback/cleanup. A continuous service drains safely on signals, emits bounded JSON events, removes exact per-trial orphan database sessions, and applies pre/post disk/OOM/health/memory gates; bounded Prometheus application metrics are exposed. A migration-backed multi-objective path persists qLogNEHVI/qLogNParEGO recommendation identity, feasible Pareto snapshots, explicit context/fidelity, reconstruction metadata, and repeated-F4 candidate evidence. The five-seed equal-budget primary comparison is now complete for the recorded workload and environment. The risk gate remains closed, and transfer/index-removal effectiveness is not established by that result.
 
 Read these checkpoint documents first:
 
@@ -80,7 +110,7 @@ Long experiment arms remain operator-run. While an arm is active, do not migrate
 run tests, stop Docker, or start another orchestrator; report completion so its durable result can
 be audited.
 
-Protocol-v2 D031 is the current local continuation milestone. It preserves the
+The historical protocol-v2 D031 recovery milestone preserved the
 failed D030 parameter-screening ledger, adds a PostgreSQL PID-1 mitigation via
 Compose `init: true`, and gates exact replacement observations 34–35 behind
 three consecutive infrastructure-only restore/fingerprint validations. See

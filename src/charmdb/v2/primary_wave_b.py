@@ -7,13 +7,19 @@ import json
 import statistics
 import uuid
 from copy import deepcopy
+from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
 
 from psycopg.types.json import Jsonb
 
 from charmdb.config import Settings
-from charmdb.controller import discover_knobs, validate_candidate
+from charmdb.controller import (
+    discover_knobs,
+    rollback_configuration,
+    settings_equivalent,
+    validate_candidate,
+)
 from charmdb.db import connect
 from charmdb.statistics import descriptive_summary, holm_adjust, paired_comparison
 from charmdb.v2.default_reference import (
@@ -51,6 +57,7 @@ WAVE_B_STAGE = "primary-wave-b"
 WAVE_B_EXPECTED_OBSERVATIONS = 262
 WAVE_B_SEEDS = (1902413987, 740267717)
 WAVE_A_CAMPAIGN_ID = uuid.UUID("b0619879-c807-4ee3-859e-2c2dbec9934e")
+HOST_POWER_INTERRUPTION = "HOST_POWER_INTERRUPTION"
 
 METRIC_DEFINITIONS = {
     "hypervolume_at_0_negative_40": "higher-is-better",
@@ -394,6 +401,428 @@ def wave_b_history(settings: Settings, campaign_id: uuid.UUID) -> dict[str, Any]
     return primary_history(settings, campaign_id)
 
 
+def _interruption_artifacts(
+    settings: Settings, campaign_id: uuid.UUID, trial_id: uuid.UUID
+) -> dict[str, Any]:
+    root = settings.artifact_dir.resolve()
+    directory = (root / "raw" / str(campaign_id) / str(trial_id)).resolve()
+    if directory != root and root not in directory.parents:
+        raise ValueError("interrupted trial artifact directory escapes the configured root")
+    markers = sorted(directory.glob("measurement-attempt-*.json"))
+    trial_artifact = directory / "trial.json"
+    partial_logs = []
+    for path in sorted(directory.glob("pgbench-*-attempt-*")):
+        if not path.is_file():
+            continue
+        partial_logs.append(
+            {
+                "relative_path": str(path.relative_to(root)),
+                "byte_size": path.stat().st_size,
+                "sha256": _file_sha256(path),
+            }
+        )
+    return {
+        "directory": str(directory),
+        "directory_exists": directory.is_dir(),
+        "completed_markers": [str(path.relative_to(root)) for path in markers],
+        "trial_artifact_exists": trial_artifact.is_file(),
+        "partial_logs": partial_logs,
+    }
+
+
+def _interruption_target_snapshot(
+    settings: Settings,
+    trial_id: uuid.UUID,
+    requested_configuration: dict[str, str],
+    expected_default: dict[str, str],
+) -> dict[str, Any]:
+    names = sorted(set(requested_configuration) | set(expected_default))
+    metadata = discover_knobs(settings, set(names))
+    with connect(settings.control_dsn) as conn, conn.cursor() as cur:
+        cur.execute(
+            """SELECT a.application_id,a.status,a.requested_settings,
+                      s.settings AS previous_settings,
+                      EXISTS (
+                          SELECT 1 FROM charm_control.rollbacks r
+                          WHERE r.application_id=a.application_id AND r.verified
+                      ) AS rollback_verified
+               FROM charm_control.configuration_applications a
+               JOIN charm_control.configuration_snapshots s USING(snapshot_id)
+               WHERE a.application_id=%s""",
+            (uuid.uuid5(uuid.NAMESPACE_URL, f"charmdb:{trial_id}:application"),),
+        )
+        application = cur.fetchone()
+    with connect(settings.target_dsn) as conn, conn.cursor() as cur:
+        cur.execute(
+            """SELECT pg_postmaster_start_time() AS postmaster_started,
+                      current_database() AS database,
+                      current_setting('server_version') AS version"""
+        )
+        identity = dict(cur.fetchone() or {})
+        cur.execute(
+            """SELECT name,setting,pending_restart FROM pg_settings
+               WHERE name=ANY(%s) ORDER BY name""",
+            (names,),
+        )
+        setting_rows = cur.fetchall()
+        active = {str(row["name"]): str(row["setting"]) for row in setting_rows}
+        pending_restart = [str(row["name"]) for row in setting_rows if row["pending_restart"]]
+        cur.execute(
+            """SELECT count(*) AS count FROM pg_stat_activity
+               WHERE application_name LIKE 'charmdb:%' AND pid<>pg_backend_pid()"""
+        )
+        active_sessions = int(cur.fetchone()["count"])  # type: ignore[index]
+        cur.execute("SELECT count(*) AS count FROM pg_indexes WHERE indexname LIKE 'charm_idx_%'")
+        managed_indexes = int(cur.fetchone()["count"])  # type: ignore[index]
+    stored_requested = (
+        {str(name): str(value) for name, value in dict(application["requested_settings"]).items()}
+        if application is not None
+        else {}
+    )
+    previous = (
+        {str(name): str(value) for name, value in dict(application["previous_settings"]).items()}
+        if application is not None
+        else {}
+    )
+    return {
+        **identity,
+        "active_configuration": active,
+        "pending_restart": pending_restart,
+        "active_charm_sessions": active_sessions,
+        "managed_indexes": managed_indexes,
+        "application": dict(application) if application is not None else None,
+        "application_matches_trial": (
+            application is not None
+            and settings_equivalent(requested_configuration, stored_requested, metadata)
+        ),
+        "snapshot_matches_default": (
+            application is not None and settings_equivalent(expected_default, previous, metadata)
+        ),
+        "active_matches_trial": settings_equivalent(requested_configuration, active, metadata),
+        "active_matches_default": settings_equivalent(expected_default, active, metadata),
+    }
+
+
+def _wave_b_interruption_blockers(
+    campaign: dict[str, Any],
+    attempt: dict[str, Any],
+    target: dict[str, Any],
+    artifacts: dict[str, Any],
+) -> list[str]:
+    blockers: list[str] = []
+    if campaign.get("campaign_status") != "PAUSED":
+        blockers.append("campaign-not-paused")
+    if campaign.get("block_status") != "RUNNING" or campaign.get("wave") != "B":
+        blockers.append("wave-b-block-not-running")
+    if attempt.get("run_status") != "CREATED" or attempt.get("attempt_status") != "CREATED":
+        blockers.append("durable-attempt-is-not-awaiting-reconciliation")
+    if attempt.get("trial_state") != "RUNNING_FULL_EVALUATION":
+        blockers.append("trial-is-not-in-full-evaluation")
+    if attempt.get("trial_completed_at") is not None:
+        blockers.append("trial-is-already-terminal")
+    if attempt.get("lease_expired") is not True:
+        blockers.append("trial-lease-is-not-expired")
+    if attempt.get("attempt_count") != 1 or attempt.get("max_attempts") != 1:
+        blockers.append("trial-does-not-match-single-worker-attempt-contract")
+    if attempt.get("action_status") != "STARTED" or attempt.get("action_completed_at") is not None:
+        blockers.append("measurement-action-is-not-interrupted")
+    if attempt.get("restore_status") != "PASSED":
+        blockers.append("candidate-restore-was-not-passed")
+    if attempt.get("exact_core_passed") is not True:
+        blockers.append("candidate-restore-exact-tier-did-not-pass")
+    if attempt.get("physical_statistics_passed") is not True:
+        blockers.append("candidate-restore-physical-tier-did-not-pass")
+    if attempt.get("later_started_runs", 0) != 0:
+        blockers.append("later-wave-b-slot-has-started")
+    if attempt.get("attempt_number", 0) >= 3:
+        blockers.append("primary-infrastructure-attempts-exhausted")
+    if target.get("postmaster_restarted_after_action") is not True:
+        blockers.append("target-restart-does-not-prove-host-interruption")
+    if target.get("application_matches_trial") is not True:
+        blockers.append("configuration-application-does-not-match-trial")
+    if target.get("snapshot_matches_default") is not True:
+        blockers.append("rollback-snapshot-does-not-match-frozen-default")
+    if target.get("active_matches_trial") is not True:
+        blockers.append("target-is-not-at-interrupted-trial-configuration")
+    if target.get("pending_restart"):
+        blockers.append("target-has-pending-restart")
+    if target.get("active_charm_sessions") != 0:
+        blockers.append("target-has-active-charm-sessions")
+    if target.get("managed_indexes") != 0:
+        blockers.append("target-has-managed-indexes")
+    if artifacts.get("directory_exists") is not True:
+        blockers.append("trial-artifact-directory-is-missing")
+    if artifacts.get("completed_markers"):
+        blockers.append("completed-measurement-marker-exists")
+    if artifacts.get("trial_artifact_exists") is True:
+        blockers.append("completed-trial-artifact-exists")
+    if not artifacts.get("partial_logs"):
+        blockers.append("partial-pgbench-logs-are-missing")
+    return blockers
+
+
+def wave_b_interruption_status(
+    settings: Settings, campaign_id: uuid.UUID, trial_id: uuid.UUID
+) -> dict[str, Any]:
+    _, _, primary_payload = _load_contract(PRIMARY_WAVE_B_MANIFEST)
+    expected_default = {
+        str(name): str(value)
+        for name, value in dict(primary_payload["postgresql_default_configuration"]).items()
+    }
+    with connect(settings.control_dsn) as conn, conn.cursor() as cur:
+        cur.execute(
+            """SELECT c.status AS campaign_status,b.status AS block_status,b.wave,
+                      b.primary_block_id,r.primary_run_id,r.global_position,
+                      r.status AS run_status,r.requested_configuration,
+                      r.infrastructure_attempts,
+                      a.primary_attempt_id,a.attempt_number,a.status AS attempt_status,
+                      a.failure_type AS attempt_failure_type,
+                      t.state AS trial_state,t.completed_at AS trial_completed_at,
+                      t.attempt_count,t.max_attempts,t.lease_expires_at,
+                      t.lease_expires_at <= clock_timestamp() AS lease_expired,
+                      action.status AS action_status,
+                      action.started_at AS action_started_at,
+                      action.completed_at AS action_completed_at,
+                      restore.status AS restore_status,restore.exact_core_passed,
+                      restore.physical_statistics_passed,
+                      (SELECT count(*) FROM charm_control.experiment_v2_primary_runs later
+                       WHERE later.primary_block_id=r.primary_block_id
+                         AND later.global_position>r.global_position
+                         AND later.status NOT IN ('PLANNED','PROPOSED')) AS later_started_runs
+               FROM charm_control.campaigns c
+               JOIN charm_control.experiment_v2_primary_blocks b USING(campaign_id)
+               JOIN charm_control.experiment_v2_primary_runs r USING(primary_block_id)
+               JOIN charm_control.experiment_v2_primary_attempts a USING(primary_run_id)
+               JOIN charm_control.trials t USING(trial_id)
+               LEFT JOIN charm_control.trial_action_executions action
+                 ON action.trial_id=t.trial_id AND action.state='RUNNING_FULL_EVALUATION'
+               LEFT JOIN charm_control.experiment_candidate_dataset_restores restore
+                 ON restore.restore_id=t.candidate_dataset_restore_id
+               WHERE c.campaign_id=%s AND t.trial_id=%s""",
+            (campaign_id, trial_id),
+        )
+        row = cur.fetchone()
+    if row is None:
+        raise ValueError("campaign/trial is not a Wave B primary attempt")
+    attempt = dict(row)
+    campaign = {
+        key: attempt[key] for key in ("campaign_status", "block_status", "wave", "primary_block_id")
+    }
+    requested = {
+        str(name): str(value)
+        for name, value in dict(attempt["requested_configuration"] or {}).items()
+    }
+    target = _interruption_target_snapshot(settings, trial_id, requested, expected_default)
+    action_started = attempt.get("action_started_at")
+    postmaster_started = target.get("postmaster_started")
+    target["postmaster_restarted_after_action"] = bool(
+        isinstance(action_started, datetime)
+        and isinstance(postmaster_started, datetime)
+        and postmaster_started > action_started
+    )
+    artifacts = _interruption_artifacts(settings, campaign_id, trial_id)
+    already_reconciled = (
+        attempt.get("run_status") == "RETRY_PENDING"
+        and attempt.get("attempt_status") == "INFRASTRUCTURE_FAILED"
+        and attempt.get("attempt_failure_type") == HOST_POWER_INTERRUPTION
+        and attempt.get("trial_state") == "TIMED_OUT"
+        and attempt.get("trial_completed_at") is not None
+        and target.get("active_matches_default") is True
+        and bool((target.get("application") or {}).get("rollback_verified"))
+    )
+    blockers = (
+        []
+        if already_reconciled
+        else _wave_b_interruption_blockers(campaign, attempt, target, artifacts)
+    )
+    return {
+        "campaign_id": str(campaign_id),
+        "trial_id": str(trial_id),
+        "campaign": campaign,
+        "attempt": attempt,
+        "target": target,
+        "artifacts": artifacts,
+        "already_reconciled": already_reconciled,
+        "reconciliation_allowed": not blockers and not already_reconciled,
+        "blockers": blockers,
+    }
+
+
+def reconcile_wave_b_interruption(
+    settings: Settings,
+    campaign_id: uuid.UUID,
+    trial_id: uuid.UUID,
+    *,
+    actor: str = "v2-primary-wave-b",
+    reason: str = "host power interruption during Wave B measurement",
+) -> dict[str, Any]:
+    settings.assert_target_allowed()
+    before = wave_b_interruption_status(settings, campaign_id, trial_id)
+    if before["already_reconciled"] is True:
+        return before
+    if before["reconciliation_allowed"] is not True:
+        raise ValueError(f"Wave B interruption reconciliation is blocked: {before['blockers']}")
+    application_id = uuid.UUID(str(before["target"]["application"]["application_id"]))
+    restored = rollback_configuration(settings, application_id, reason)
+    expected_default = {
+        str(name): str(value)
+        for name, value in dict(before["target"]["application"]["previous_settings"]).items()
+    }
+    metadata = discover_knobs(settings, set(expected_default))
+    with connect(settings.target_dsn) as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT name,setting,pending_restart FROM pg_settings WHERE name=ANY(%s)",
+            (sorted(expected_default),),
+        )
+        rows = cur.fetchall()
+        active = {str(row["name"]): str(row["setting"]) for row in rows}
+        pending = [str(row["name"]) for row in rows if row["pending_restart"]]
+        cur.execute(
+            """SELECT count(*) AS count FROM pg_stat_activity
+               WHERE application_name LIKE 'charmdb:%' AND pid<>pg_backend_pid()"""
+        )
+        sessions = int(cur.fetchone()["count"])  # type: ignore[index]
+        cur.execute("SELECT count(*) AS count FROM pg_indexes WHERE indexname LIKE 'charm_idx_%'")
+        managed_indexes = int(cur.fetchone()["count"])  # type: ignore[index]
+    if (
+        not settings_equivalent(expected_default, restored, metadata)
+        or not settings_equivalent(expected_default, active, metadata)
+        or pending
+        or sessions
+        or managed_indexes
+    ):
+        raise RuntimeError("target did not reach the verified safe default state after rollback")
+    audit = {
+        "decision": "D067",
+        "kind": "wave-b-host-power-interruption-reconciliation",
+        "reason": reason,
+        "campaign_id": str(campaign_id),
+        "primary_block_id": str(before["campaign"]["primary_block_id"]),
+        "primary_run_id": str(before["attempt"]["primary_run_id"]),
+        "global_position": int(before["attempt"]["global_position"]),
+        "primary_attempt_id": str(before["attempt"]["primary_attempt_id"]),
+        "attempt_number": int(before["attempt"]["attempt_number"]),
+        "trial_id": str(trial_id),
+        "application_id": str(application_id),
+        "failure_type": HOST_POWER_INTERRUPTION,
+        "partial_logs": before["artifacts"]["partial_logs"],
+        "completed_measurement_marker_present": False,
+        "completed_trial_artifact_present": False,
+        "partial_evidence_retained": True,
+        "candidate_budget_consumed": False,
+        "next_attempt_number": int(before["attempt"]["attempt_number"]) + 1,
+        "target_restored_to_default": True,
+        "pending_restart": [],
+        "active_charm_sessions": 0,
+        "managed_indexes": 0,
+    }
+    with connect(settings.control_dsn) as conn, conn.cursor() as cur:
+        cur.execute(
+            """SELECT c.status AS campaign_status,r.status AS run_status,
+                      a.status AS attempt_status,t.state AS trial_state,
+                      t.completed_at,t.lease_expires_at<=clock_timestamp() AS lease_expired
+               FROM charm_control.campaigns c
+               JOIN charm_control.experiment_v2_primary_runs r USING(campaign_id)
+               JOIN charm_control.experiment_v2_primary_attempts a USING(primary_run_id)
+               JOIN charm_control.trials t USING(trial_id)
+               WHERE c.campaign_id=%s AND t.trial_id=%s
+               FOR UPDATE OF c,r,a,t""",
+            (campaign_id, trial_id),
+        )
+        locked = cur.fetchone()
+        if (
+            locked is None
+            or locked["campaign_status"] != "PAUSED"
+            or locked["run_status"] != "CREATED"
+            or locked["attempt_status"] != "CREATED"
+            or locked["trial_state"] != "RUNNING_FULL_EVALUATION"
+            or locked["completed_at"] is not None
+            or locked["lease_expired"] is not True
+        ):
+            raise RuntimeError("Wave B interruption state changed before ledger reconciliation")
+        cur.execute(
+            """UPDATE charm_control.trial_action_executions
+               SET status='FAILED',error=%s,completed_at=clock_timestamp()
+               WHERE trial_id=%s AND state='RUNNING_FULL_EVALUATION'
+                 AND status='STARTED' AND completed_at IS NULL""",
+            (Jsonb(audit), trial_id),
+        )
+        if cur.rowcount != 1:
+            raise RuntimeError("interrupted measurement action lost its STARTED state")
+        cur.execute(
+            """INSERT INTO charm_control.trial_transitions
+               (trial_id,from_state,to_state,reason,details)
+               VALUES (%s,'RUNNING_FULL_EVALUATION','TIMED_OUT',%s,%s)""",
+            (trial_id, reason, Jsonb(audit)),
+        )
+        cur.execute(
+            """UPDATE charm_control.trials
+               SET state='TIMED_OUT',failure_type='TIMED_OUT',
+                   diagnostic_details=diagnostic_details || %s,
+                   completed_at=clock_timestamp(),lease_owner=NULL,lease_token=NULL,
+                   lease_expires_at=NULL,heartbeat_at=NULL
+               WHERE trial_id=%s AND state='RUNNING_FULL_EVALUATION'
+                 AND completed_at IS NULL""",
+            (Jsonb({"host_power_interruption_reconciliation": audit}), trial_id),
+        )
+        if cur.rowcount != 1:
+            raise RuntimeError("interrupted trial lost its nonterminal state")
+        cur.execute(
+            """UPDATE charm_control.experiment_v2_primary_attempts
+               SET status='INFRASTRUCTURE_FAILED',failure_type=%s,
+                   failure_details=%s,completed_at=clock_timestamp()
+               WHERE primary_attempt_id=%s AND status='CREATED'""",
+            (
+                HOST_POWER_INTERRUPTION,
+                Jsonb(audit),
+                before["attempt"]["primary_attempt_id"],
+            ),
+        )
+        if cur.rowcount != 1:
+            raise RuntimeError("primary attempt lost its CREATED state")
+        cur.execute(
+            """UPDATE charm_control.experiment_v2_primary_runs
+               SET status='RETRY_PENDING',infrastructure_attempts=%s,
+                   failure_details=%s,completed_at=NULL
+               WHERE primary_run_id=%s AND status='CREATED'""",
+            (
+                int(before["attempt"]["attempt_number"]),
+                Jsonb(audit),
+                before["attempt"]["primary_run_id"],
+            ),
+        )
+        if cur.rowcount != 1:
+            raise RuntimeError("primary run lost its CREATED state")
+        cur.execute(
+            """UPDATE charm_control.campaigns
+               SET failure_count=failure_count+1,
+                   settings=jsonb_set(
+                       settings,'{wave_b_host_interruption_reconciliations}',
+                       COALESCE(settings->'wave_b_host_interruption_reconciliations','[]'::jsonb)
+                           || %s,true
+                   ),updated_at=clock_timestamp()
+               WHERE campaign_id=%s AND status='PAUSED'""",
+            (Jsonb([audit]), campaign_id),
+        )
+        if cur.rowcount != 1:
+            raise RuntimeError("Wave B campaign lost its paused state")
+        cur.execute(
+            """INSERT INTO charm_control.campaign_events
+               (campaign_id,event_type,previous_status,new_status,actor,reason,details)
+               VALUES (%s,'RECONCILE','PAUSED','PAUSED',%s,%s,%s)""",
+            (campaign_id, actor, reason, Jsonb(audit)),
+        )
+        conn.commit()
+    return {
+        "before": before,
+        "audit": audit,
+        "campaign_status": "PAUSED",
+        "run_status": "RETRY_PENDING",
+        "next_attempt_number": audit["next_attempt_number"],
+        "safe_to_resume_existing_campaign": True,
+    }
+
+
 def _wave_b_analysis_payload(primary_payload: dict[str, Any]) -> dict[str, Any]:
     payload = deepcopy(primary_payload)
     payload["wave_a"] = {
@@ -573,6 +1002,113 @@ def _summary_rows(
     return statistics_rows, pairwise_rows
 
 
+def _combined_failure_accounting(
+    wave_a: dict[str, Any], wave_b: dict[str, Any]
+) -> list[dict[str, Any]]:
+    fields = (
+        "logical_slots",
+        "completed_slots",
+        "valid_candidate_observations",
+        "completed_but_invalid_slots",
+        "candidate_failed_slots",
+        "infrastructure_exhausted_slots",
+        "retained_infrastructure_attempts",
+        "slots_with_infrastructure_retry",
+    )
+    result: list[dict[str, Any]] = []
+    for method in (*PRIMARY_SEARCH_METHODS, "postgresql_default"):
+        source_rows = [
+            next(row for row in source["failure_accounting"] if row["method"] == method)
+            for source in (wave_a, wave_b)
+        ]
+        result.append(
+            {
+                "method": method,
+                **{field: sum(int(row[field]) for row in source_rows) for field in fields},
+            }
+        )
+    return result
+
+
+def _combined_pareto_front(wave_a: dict[str, Any], wave_b: dict[str, Any]) -> list[dict[str, Any]]:
+    candidates = [deepcopy(row) for source in (wave_a, wave_b) for row in source["pareto_front"]]
+    front: list[dict[str, Any]] = []
+    for candidate in candidates:
+        candidate_tps = float(candidate["throughput_tps"])
+        candidate_p99 = float(candidate["p99_ms"])
+        dominated = any(
+            float(other["throughput_tps"]) >= candidate_tps
+            and float(other["p99_ms"]) <= candidate_p99
+            and (
+                float(other["throughput_tps"]) > candidate_tps
+                or float(other["p99_ms"]) < candidate_p99
+            )
+            for other in candidates
+            if other is not candidate
+        )
+        if not dominated:
+            front.append(candidate)
+    return sorted(
+        front,
+        key=lambda row: (
+            float(row["throughput_tps"]),
+            -float(row["p99_ms"]),
+            int(row["seed"]),
+            str(row["primary_run_id"]),
+        ),
+    )
+
+
+def _combined_detail(wave_a: dict[str, Any], wave_b: dict[str, Any]) -> dict[str, Any]:
+    trajectories = sorted(
+        [deepcopy(row) for source in (wave_a, wave_b) for row in source["slot_trajectories"]],
+        key=lambda row: (
+            int(row["seed"]),
+            PRIMARY_SEARCH_METHODS.index(str(row["method"])),
+        ),
+    )
+    controls = sorted(
+        [deepcopy(row) for source in (wave_a, wave_b) for row in source["control_series"]],
+        key=lambda row: (int(row["seed"]), int(row["within_seed_position"])),
+    )
+    drift = sorted(
+        [deepcopy(row) for source in (wave_a, wave_b) for row in source["drift_flags"]],
+        key=lambda row: int(row["seed"]),
+    )
+    scatter = sorted(
+        [deepcopy(row) for source in (wave_a, wave_b) for row in source["candidate_scatter"]],
+        key=lambda row: (
+            int(row["seed"]),
+            str(row["physical_method"]),
+            float(row["throughput_tps"]),
+            float(row["p99_ms"]),
+        ),
+    )
+    terminal_counts: dict[str, int] = {}
+    for source in (wave_a, wave_b):
+        for status, count in source["terminal_counts"].items():
+            terminal_counts[str(status)] = terminal_counts.get(str(status), 0) + int(count)
+    policy = deepcopy(wave_a["analysis_policy"])
+    policy["controls"] = sum(int(source["valid_default_controls"]) for source in (wave_a, wave_b))
+    return {
+        "analysis_policy": policy,
+        "reference_point": deepcopy(wave_a["reference_point"]),
+        "terminal_counts": terminal_counts,
+        "physical_valid_candidates": sum(
+            int(source["physical_valid_candidates"]) for source in (wave_a, wave_b)
+        ),
+        "valid_default_controls": sum(
+            int(source["valid_default_controls"]) for source in (wave_a, wave_b)
+        ),
+        "drift_flags": drift,
+        "slot_trajectories": trajectories,
+        "failure_accounting": _combined_failure_accounting(wave_a, wave_b),
+        "pareto_front": _combined_pareto_front(wave_a, wave_b),
+        "control_series": controls,
+        "candidate_scatter": scatter,
+    }
+
+
 def combine_primary_analyses(
     wave_a: dict[str, Any], wave_b: dict[str, Any], wave_payload: dict[str, Any]
 ) -> dict[str, Any]:
@@ -633,12 +1169,19 @@ def combine_primary_analyses(
                 "mean_control_relative_p99_ms": method_results[-1]["mean_control_relative_p99_ms"],
             }
         )
+    detail = _combined_detail(wave_a, wave_b)
     return {
-        "outcome": "COMPLETE",
-        "report_scope": "combined Wave A + Wave B",
+        "outcome": (
+            "COMPLETE_WITH_DRIFT_FLAGS"
+            if any(bool(row.get("flagged")) for row in detail["drift_flags"])
+            else "COMPLETE"
+        ),
+        "report_scope": "final five-seed",
+        "unified_five_seed_cohort": True,
         "independent_unit": "seed",
         "independent_seed_count": 5,
         "analysis_seeds": sorted(expected_seeds),
+        "expected_physical_observations": 655,
         "registered_endpoints": list(METRIC_DEFINITIONS),
         "source_wave_a_analysis_sha256": wave_payload["source_evidence"][
             "wave_a_analysis_payload_sha256"
@@ -649,6 +1192,7 @@ def combine_primary_analyses(
         "seed_level_statistics": statistics_rows,
         "pairwise_comparisons": pairwise_rows,
         "candidate_reliability": reliability,
+        **detail,
         "inference_guard": (
             "Seed is the independent unit (n=5). The exact two-sided sign-flip p-value "
             "cannot be below 0.0625; p-values are supplementary to per-seed direction "
@@ -768,7 +1312,7 @@ def _markdown_table(rows: list[dict[str, Any]], columns: list[str]) -> str:
     return "\n".join(lines)
 
 
-def export_final_five_seed_report(
+def _export_final_five_seed_report_summary_legacy(
     settings: Settings,
     wave_b_campaign_id: uuid.UUID,
     output_dir: Path | None = None,
@@ -880,6 +1424,37 @@ def export_final_five_seed_report(
         "file_count": len(files) + 1,
         "total_bytes": sum(int(item["bytes"]) for item in files) + len(encoded),
     }
+
+
+def export_final_five_seed_report(
+    settings: Settings,
+    wave_b_campaign_id: uuid.UUID,
+    output_dir: Path | None = None,
+) -> dict[str, Any]:
+    """Render the D066-complete unified five-seed publication package."""
+    analysis = analyze_final_five_seed(settings, wave_b_campaign_id)
+    root = (settings.artifact_dir / WAVE_B_STAGE).resolve()
+    output = (output_dir or root / "report-final-five-seed").resolve()
+    if output != root and root not in output.parents:
+        raise ValueError("final report must stay under the Wave B artifact root")
+    _, wave_payload, primary_payload = _load_contract(PRIMARY_WAVE_B_MANIFEST)
+    context = {
+        "evidence_role": "PRIMARY",
+        "analysis_sha256": analysis["analysis_sha256"],
+        "benchmark_profile_id": primary_payload["benchmark_profile_id"],
+        "report_kind": "thesis-protocol-v2-primary-final-five-seed",
+        "report_filename": "final-five-seed-report.md",
+        "index_filename": "final-five-seed-report-index.json",
+        "source_provenance": {
+            "wave_a_campaign_id": str(WAVE_A_CAMPAIGN_ID),
+            "wave_a_analysis_sha256": wave_payload["source_evidence"][
+                "wave_a_analysis_payload_sha256"
+            ],
+            "wave_b_campaign_id": str(wave_b_campaign_id),
+            "wave_b_analysis_sha256": analysis["source_wave_b_analysis_sha256"],
+        },
+    }
+    return render_primary_report(analysis, context, output)
 
 
 def wave_b_step_dict(step: Any) -> dict[str, Any]:

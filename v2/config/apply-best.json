@@ -1,0 +1,92 @@
+{
+  "protocol_id": "thesis-protocol-v2",
+  "schema_version": 1,
+  "stage": "apply-best",
+  "status": "blocked",
+  "evidence_role": "DEPLOYMENT_CONTROL",
+  "operator_triggered": true,
+  "artifact_root": "artifacts-newpc/v2/apply-best",
+  "candidate_restore_gate": "required",
+  "prerequisites": {
+    "f4_terminal_champion_authenticated": true,
+    "wave_b_standalone_report_complete": true,
+    "final_five_seed_report_complete": true,
+    "recoverable_workflow_implemented": true
+  },
+  "recovery_validation_authorized": true,
+  "persistent_activation_authorized": false,
+  "source_evidence": {
+    "f4_campaign_id": "2dafef4e-5990-40cc-ad34-a4b180f888c4",
+    "f4_manifest_sha256": "a24596995869e20234a4254a7910efaa289b198d9bb7ca7ae17dec3f76c8fc20",
+    "f4_analysis_sha256": "00d67d24e07670a0d8cb11e754854189f99afb28f78ed240f2ab01b9b8b3230c",
+    "wave_b_campaign_id": "8d95edea-81e7-41eb-ba81-0997008cf4a8",
+    "wave_b_analysis_sha256": "c2486ee794d323af9a033d811e89329582469583980340b9bdbe15fa6db78ebb",
+    "final_five_seed_analysis_sha256": "769f5a0eabdebe272a0a8ae4b7578fd54f72d4a95cd53822e1cb993466a36fb2",
+    "final_report_payload_sha256": "5776d42c71392cf3b6ecf38df3602381a9e736a9ce8d5c128ec5770bf1e02634",
+    "final_report_index_sha256": "97a37d469ca515a4fb4889f6548c8c42ff33b85b1a41d6504dc2e4b551747fd2"
+  },
+  "champion": {
+    "treatment": "E",
+    "source_primary_run_id": "e6d70fab-0c90-5795-96a1-5021bff1194c",
+    "selection": "CONFIRMED_CHAMPION",
+    "requested_configuration": {
+      "checkpoint_completion_target": "0.936696",
+      "checkpoint_timeout": "1430",
+      "effective_cache_size": "465506",
+      "max_parallel_workers_per_gather": "3",
+      "max_wal_size": "633",
+      "random_page_cost": "3.655316",
+      "shared_buffers": "182848",
+      "work_mem": "18022"
+    }
+  },
+  "recovery_contract": {
+    "snapshot_before_change": true,
+    "force_postgresql_restart": true,
+    "verify_requested_equals_active": true,
+    "verify_postgresql_health": true,
+    "verify_no_pending_restart": true,
+    "verify_no_managed_indexes": true,
+    "verify_no_charm_sessions": true,
+    "rollback_to_exact_snapshot": true,
+    "verify_snapshot_equals_active_after_rollback": true,
+    "single_recovery_cycle_required": true
+  },
+  "authorization_contract": {
+    "persist_decision_before_activation": true,
+    "required_fields": [
+      "decision_id",
+      "actor",
+      "statement",
+      "confirmed_configuration_sha256"
+    ],
+    "manifest_does_not_authorize_activation": true,
+    "activation_requires_recovery_tested_state": true,
+    "rollback_command_available_while_active": true
+  },
+  "time_estimate": {
+    "historical_percentile": 0.95,
+    "percentile_method": "nearest-rank",
+    "readiness_and_decision_allowance_seconds": 30,
+    "post_activation_verification_allowance_seconds": 30,
+    "post_rollback_verification_allowance_seconds": 30,
+    "rounding": "ceiling-to-whole-second",
+    "full_reversible_window_includes_activation_and_rollback": true
+  },
+  "implementation": {
+    "decision": "D070",
+    "schema_migration": "042_v2_apply_best",
+    "module": "charmdb.v2.apply_best",
+    "commands": [
+      "v2-apply-best-validate",
+      "v2-apply-best-prepare",
+      "v2-apply-best-recovery-test",
+      "v2-apply-best-status",
+      "v2-apply-best-activate",
+      "v2-apply-best-rollback"
+    ]
+  },
+  "unresolved_decisions": [
+    "persistent activation requires a new explicit operator decision; recovery validation is ready"
+  ]
+}

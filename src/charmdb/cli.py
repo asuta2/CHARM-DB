@@ -61,6 +61,15 @@ from charmdb.reference_block import run_f3_reference_block
 from charmdb.reporting import generate_report
 from charmdb.search_execution import progress_json, run_search_arm, start_or_resume_search_arm
 from charmdb.soak import run_soak_test, soak_result_dict
+from charmdb.v2.apply_best import (
+    APPLY_BEST_MANIFEST,
+    activate_apply_best,
+    apply_best_readiness,
+    apply_best_status,
+    prepare_apply_best,
+    rollback_apply_best,
+    run_apply_best_recovery_test,
+)
 from charmdb.v2.bootstrap import (
     bootstrap_report_dict,
     run_bootstrap_preflight,
@@ -153,9 +162,11 @@ from charmdb.v2.primary_wave_b import (
     export_wave_b_analysis,
     export_wave_b_design,
     export_wave_b_report,
+    reconcile_wave_b_interruption,
     run_wave_b_next,
     wave_b_design_summary,
     wave_b_history,
+    wave_b_interruption_status,
     wave_b_readiness,
     wave_b_step_dict,
 )
@@ -1284,6 +1295,36 @@ def v2_primary_wave_b_history_command(campaign_id: uuid.UUID) -> None:
     typer.echo(json.dumps(wave_b_history(get_settings(), campaign_id), indent=2, default=str))
 
 
+@app.command("v2-primary-wave-b-interruption-status")
+def v2_primary_wave_b_interruption_status_command(
+    campaign_id: uuid.UUID, trial_id: uuid.UUID
+) -> None:
+    """Fail-closed audit of one stale Wave B measurement interrupted by a host restart."""
+    typer.echo(
+        json.dumps(
+            wave_b_interruption_status(get_settings(), campaign_id, trial_id),
+            indent=2,
+            default=str,
+        )
+    )
+
+
+@app.command("v2-primary-wave-b-reconcile-interruption")
+def v2_primary_wave_b_reconcile_interruption_command(
+    campaign_id: uuid.UUID,
+    trial_id: uuid.UUID,
+    reason: str = "host power interruption during Wave B measurement",
+) -> None:
+    """Rollback and retain one proven interrupted Wave B attempt for exact retry."""
+    typer.echo(
+        json.dumps(
+            reconcile_wave_b_interruption(get_settings(), campaign_id, trial_id, reason=reason),
+            indent=2,
+            default=str,
+        )
+    )
+
+
 @app.command("v2-primary-wave-b-analyze")
 def v2_primary_wave_b_analyze_command(campaign_id: uuid.UUID) -> None:
     typer.echo(json.dumps(analyze_wave_b(get_settings(), campaign_id), indent=2, default=str))
@@ -1341,6 +1382,108 @@ def v2_multifidelity_phase_a_command(
 ) -> None:
     """Execute the D052 retrospective analysis without running a benchmark."""
     typer.echo(json.dumps(execute_phase_a(get_settings(), campaign_id, output), indent=2))
+
+
+@app.command("v2-apply-best-validate")
+def v2_apply_best_validate_command(
+    manifest: Annotated[
+        Path, typer.Option(exists=True, file_okay=True, dir_okay=False, readable=True)
+    ] = APPLY_BEST_MANIFEST,
+) -> None:
+    """Validate champion E provenance, target safety, recovery state, and timing."""
+    result = apply_best_readiness(get_settings(), manifest)
+    typer.echo(json.dumps(result, indent=2, default=str))
+    if not result["preparation_ready"]:
+        raise typer.Exit(code=1)
+
+
+@app.command("v2-apply-best-prepare")
+def v2_apply_best_prepare_command(
+    manifest: Annotated[
+        Path, typer.Option(exists=True, file_okay=True, dir_okay=False, readable=True)
+    ] = APPLY_BEST_MANIFEST,
+) -> None:
+    """Create the singleton apply-best ledger without changing PostgreSQL."""
+    settings = get_settings()
+    deployment_id = prepare_apply_best(settings, manifest)
+    status = apply_best_status(settings, deployment_id, manifest)["deployment"]["status"]
+    typer.echo(
+        json.dumps(
+            {"deployment_id": str(deployment_id), "status": status, "target_changed": False},
+            indent=2,
+        )
+    )
+
+
+@app.command("v2-apply-best-recovery-test")
+def v2_apply_best_recovery_test_command(
+    deployment_id: uuid.UUID,
+    confirm_transient_change: Annotated[
+        bool,
+        typer.Option(
+            "--confirm-transient-change",
+            help="Acknowledge one restart/apply/verify/rollback recovery cycle.",
+        ),
+    ] = False,
+) -> None:
+    """Apply champion E transiently, verify it, and restore the exact snapshot."""
+    if not confirm_transient_change:
+        raise typer.BadParameter("--confirm-transient-change is required")
+    typer.echo(
+        json.dumps(
+            run_apply_best_recovery_test(get_settings(), deployment_id),
+            indent=2,
+            default=str,
+        )
+    )
+
+
+@app.command("v2-apply-best-status")
+def v2_apply_best_status_command(deployment_id: uuid.UUID | None = None) -> None:
+    """Audit durable workflow state against the live target."""
+    typer.echo(json.dumps(apply_best_status(get_settings(), deployment_id), indent=2, default=str))
+
+
+@app.command("v2-apply-best-activate")
+def v2_apply_best_activate_command(
+    deployment_id: uuid.UUID,
+    decision_id: Annotated[str, typer.Option("--decision-id")],
+    actor: Annotated[str, typer.Option("--actor")],
+    statement: Annotated[str, typer.Option("--statement")],
+    confirmed_configuration_sha256: Annotated[
+        str, typer.Option("--confirmed-configuration-sha256")
+    ],
+) -> None:
+    """Persist explicit authorization, then activate and verify champion E."""
+    typer.echo(
+        json.dumps(
+            activate_apply_best(
+                get_settings(),
+                deployment_id,
+                decision_id=decision_id,
+                actor=actor,
+                statement=statement,
+                confirmed_configuration_sha256=confirmed_configuration_sha256,
+            ),
+            indent=2,
+            default=str,
+        )
+    )
+
+
+@app.command("v2-apply-best-rollback")
+def v2_apply_best_rollback_command(
+    deployment_id: uuid.UUID,
+    reason: Annotated[str, typer.Option("--reason")],
+) -> None:
+    """Restore the exact pre-activation snapshot and verify target health."""
+    typer.echo(
+        json.dumps(
+            rollback_apply_best(get_settings(), deployment_id, reason),
+            indent=2,
+            default=str,
+        )
+    )
 
 
 @app.command("v2-f4-validate")

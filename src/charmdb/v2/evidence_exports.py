@@ -132,6 +132,11 @@ _TABLE_EXPORTS = {
            ORDER BY r.f4_block_id,r.physical_position,a.attempt_number""",
         "Append-only F4 attempt and infrastructure-retry ledger",
     ),
+    "apply-best-deployments.json": (
+        """SELECT * FROM charm_control.experiment_v2_apply_best_deployments
+           ORDER BY created_at,deployment_id""",
+        "Recoverable champion deployment, authorization, activation, and rollback ledger",
+    ),
     "infrastructure-failed-trials.json": (
         """SELECT trial_id,campaign_id,state,failure_type,attempt_count,max_attempts,
                   diagnostic_details,workflow_result,created_at,started_at,completed_at

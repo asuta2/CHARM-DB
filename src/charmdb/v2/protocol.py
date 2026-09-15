@@ -17,6 +17,7 @@ EVIDENCE_ROLES = frozenset(
         "PRIMARY",
         "SECONDARY",
         "F4_CONFIRMATION",
+        "DEPLOYMENT_CONTROL",
     }
 )
 MANIFEST_STATUSES = frozenset({"draft", "blocked", "ready"})
@@ -95,6 +96,27 @@ def _validate_search_space(payload: dict[str, Any]) -> None:
     denied = DURABILITY_KNOBS.intersection(parameters)
     if denied:
         raise ValueError(f"durability knobs are forbidden in v2 search spaces: {sorted(denied)}")
+
+
+def _validate_apply_best(payload: dict[str, Any], role: str, status: str) -> None:
+    if role != "DEPLOYMENT_CONTROL" or status != "blocked":
+        raise ValueError("apply-best must remain blocked pending explicit activation authorization")
+    if (
+        payload.get("recovery_validation_authorized") is not True
+        or payload.get("persistent_activation_authorized") is not False
+    ):
+        raise ValueError("apply-best may authorize recovery validation but not activation")
+    champion = _require_mapping(payload.get("champion"), "champion")
+    if champion.get("treatment") != "E" or champion.get("selection") != "CONFIRMED_CHAMPION":
+        raise ValueError("apply-best must identify F4 champion E")
+    authorization = _require_mapping(
+        payload.get("authorization_contract"), "authorization_contract"
+    )
+    if (
+        authorization.get("persist_decision_before_activation") is not True
+        or authorization.get("manifest_does_not_authorize_activation") is not True
+    ):
+        raise ValueError("apply-best must persist a separate activation decision")
 
 
 def _validate_primary(payload: dict[str, Any], status: str) -> None:
@@ -840,6 +862,8 @@ def validate_manifest(payload: dict[str, Any], *, path: Path | None = None) -> P
         _validate_f4_confirmation(payload, role, status)
     if stage == "primary-wave-b":
         _validate_primary_wave_b(payload, role, status)
+    if stage == "apply-best":
+        _validate_apply_best(payload, role, status)
     if stage == "screening-interpretation-amendment":
         _validate_screening_amendment(payload, role)
     if role == "PRIMARY" and stage != "primary-wave-b":

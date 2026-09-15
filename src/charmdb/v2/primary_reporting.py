@@ -50,6 +50,9 @@ METHOD_COLORS: dict[str, str] = {
     "bo_qlognehvi_multiobjective": "#8172b3",
 }
 CONTROL_COLOR = "#4d4d4d"
+# Five clearly separated hues; shared across the final thesis figures.
+SEED_COLORS = ("#0072B2", "#D55E00", "#009E73", "#CC79A7", "#332288")
+SEED_DASHES = ("", "8 3", "3 3", "9 3 2 3", "2 2")
 STATUS_COLORS: dict[str, str] = {
     "COMPLETED": "#55a868",
     "CANDIDATE_FAILED": "#dd8452",
@@ -652,48 +655,76 @@ def figure_minimum_p99_by_slot(analysis: dict[str, Any]) -> str:
     )
 
 
-def figure_default_drift(analysis: dict[str, Any]) -> str:
+def figure_default_drift(analysis: dict[str, Any], *, legacy_colors: bool = False) -> str:
     """Default controls over chronological physical position, separated by seed."""
     series = [item for item in analysis["control_series"] if item["valid"]]
     seeds = sorted({int(item["seed"]) for item in analysis["control_series"]})
     width, height = 960, 660
-    positions = [float(item["global_position"]) for item in analysis["control_series"]]
-    expected = float(analysis.get("expected_physical_observations", 393))
+    unified = bool(analysis.get("unified_five_seed_cohort"))
+    position_key = "within_seed_position" if unified else "global_position"
+    positions = [float(item[position_key]) for item in analysis["control_series"]]
+    expected = float(131 if unified else analysis.get("expected_physical_observations", 393))
     x_low, x_high = (1.0, expected) if not positions else (1.0, max(expected, max(positions)))
     tps_low, tps_high = _padded_bounds([float(item["throughput_tps"]) for item in series])
     p99_low, p99_high = _padded_bounds([float(item["p99_ms"]) for item in series])
     top = _Frame(84, width - 260, 56, 320, x_low, x_high, tps_low, tps_high)
     bottom = _Frame(84, width - 260, 388, height - 70, x_low, x_high, p99_low, p99_high)
-    axis = f"Chronological physical observation (1-{int(expected)})"
+    axis = (
+        "Within-seed scheduled position (1-131)"
+        if unified
+        else f"Chronological physical observation (1-{int(expected)})"
+    )
     body = _axes(top, axis, "Default control TPS")
     body.extend(_axes(bottom, axis, "Default control p99 (ms)"))
-    palette = ["#4c72b0", "#dd8452", "#55a868"]
+    palette = ("#4c72b0", "#dd8452", "#55a868") if legacy_colors else SEED_COLORS
+    if not legacy_colors and len(seeds) > len(palette):
+        raise ValueError("Drift palette supports at most five seeds; do not recycle colors")
     for index, seed in enumerate(seeds):
         color = palette[index % len(palette)]
+        dash = "" if legacy_colors else f' stroke-dasharray="{SEED_DASHES[index]}"'
         seed_points = [item for item in series if int(item["seed"]) == seed]
         for frame, key in ((top, "throughput_tps"), (bottom, "p99_ms")):
             coordinates = " ".join(
-                f"{_number(frame.x(float(item['global_position'])))},"
+                f"{_number(frame.x(float(item[position_key])))},"
                 f"{_number(frame.y(float(item[key])))}"
                 for item in seed_points
             )
             if coordinates:
                 body.append(
                     f'<polyline fill="none" stroke="{color}" stroke-width="2" '
-                    f'points="{coordinates}"/>'
+                    f'points="{coordinates}"{dash}/>'
                 )
             for item in seed_points:
                 body.append(
-                    f'<circle cx="{_number(frame.x(float(item["global_position"])))}" '
+                    f'<circle cx="{_number(frame.x(float(item[position_key])))}" '
                     f'cy="{_number(frame.y(float(item[key])))}" r="4" fill="{color}"/>'
                 )
     body.extend(
         _legend(
-            [(f"seed {seed}", palette[index % len(palette)]) for index, seed in enumerate(seeds)],
+            [
+                (
+                    f"seed {seed}" + (
+                        " *" if not legacy_colors and any(
+                            row.get("flagged") and int(row["seed"]) == seed
+                            for row in analysis["drift_flags"]
+                        ) else ""
+                    ),
+                    palette[index % len(palette)],
+                )
+                for index, seed in enumerate(seeds)
+            ],
             width - 240,
             96,
         )
     )
+    if not legacy_colors:
+        for index, _seed in enumerate(seeds):
+            y = 96 + index * 18
+            body.append(
+                f'<line x1="{width - 95}" x2="{width - 55}" y1="{y}" y2="{y}" '
+                f'stroke="{palette[index]}" stroke-width="2" '
+                f'stroke-dasharray="{SEED_DASHES[index]}"/>'
+            )
     flagged = [item for item in analysis["drift_flags"] if item.get("flagged")]
     scope = str(analysis.get("report_scope", "Wave A"))
     note = (
@@ -701,6 +732,8 @@ def figure_default_drift(analysis: dict[str, Any]) -> str:
         if not flagged
         else f"{len(flagged)} seed(s) raised a transparency drift flag; {scope} is not discarded."
     )
+    if not legacy_colors and flagged:
+        note += " Asterisk marks a flagged seed."
     return _document(width, height, "PostgreSQL default control drift within each seed", body, note)
 
 
@@ -783,6 +816,7 @@ def _cell(value: Any) -> str:
 
 def primary_tables(analysis: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
     """Build every predefined Wave A table as ordered row dictionaries."""
+    unified = bool(analysis.get("unified_five_seed_cohort"))
     accounting = {str(item["method"]): item for item in analysis["failure_accounting"]}
     method_outcomes: list[dict[str, Any]] = []
     for summary in analysis["method_results"]:
@@ -809,31 +843,40 @@ def primary_tables(analysis: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
     slot_rows: list[dict[str, Any]] = []
     for trajectory in analysis["slot_trajectories"]:
         for slot in trajectory["slots"]:
-            slot_rows.append(
-                {
-                    "seed": trajectory["seed"],
-                    "method": trajectory["method"],
-                    "slot": slot["slot"],
-                    "physical_method": slot["physical_method"],
-                    "global_position": slot["global_position"],
-                    "status": slot["status"],
-                    "valid": slot["valid"],
-                    "throughput_tps": slot["throughput_tps"],
-                    "p99_ms": slot["p99_ms"],
-                    "best_throughput_tps": slot["best_throughput_tps"],
-                    "minimum_p99_ms": slot["minimum_p99_ms"],
-                    "hypervolume": slot["hypervolume"],
-                }
-            )
+            row = {
+                "seed": trajectory["seed"],
+                "method": trajectory["method"],
+                "slot": slot["slot"],
+                "physical_method": slot["physical_method"],
+                "status": slot["status"],
+                "valid": slot["valid"],
+                "throughput_tps": slot["throughput_tps"],
+                "p99_ms": slot["p99_ms"],
+                "best_throughput_tps": slot["best_throughput_tps"],
+                "minimum_p99_ms": slot["minimum_p99_ms"],
+                "hypervolume": slot["hypervolume"],
+            }
+            if unified:
+                row["within_seed_position"] = slot["within_seed_position"]
+            else:
+                row["global_position"] = slot["global_position"]
+            slot_rows.append(row)
+    controls = [dict(row) for row in analysis["control_series"]]
+    front = [dict(row) for row in analysis["pareto_front"]]
+    if unified:
+        for row in controls:
+            row.pop("global_position", None)
+        for row in front:
+            row.pop("global_position", None)
     return {
         "method-outcomes": method_outcomes,
         "seed-method-outcomes": list(analysis["seed_method_results"]),
         "seed-level-statistics": list(analysis["seed_level_statistics"]),
         "pairwise-contrasts": list(analysis["pairwise_comparisons"]),
         "safety-and-failures": list(analysis["failure_accounting"]),
-        "default-controls": list(analysis["control_series"]),
+        "default-controls": controls,
         "default-drift": list(analysis["drift_flags"]),
-        "pareto-front": list(analysis["pareto_front"]),
+        "pareto-front": front,
         "slot-trajectories": slot_rows,
     }
 
@@ -872,163 +915,199 @@ def render_markdown(analysis: dict[str, Any], context: dict[str, Any]) -> str:
     tables = primary_tables(analysis)
     scope = str(analysis.get("report_scope", "Wave A"))
     seed_count = int(analysis.get("independent_seed_count", 3))
-    lines: list[str] = [
-        f"# Protocol-v2 {scope} primary comparison report",
-        "",
-        f"- Campaign: `{context['campaign_id']}`",
-        f"- Primary block: `{context['primary_block_id']}`",
-        f"- Manifest SHA-256: `{context['manifest_sha256']}`",
-        f"- Schedule SHA-256: `{context['schedule_sha256']}`",
-        f"- Candidate-design SHA-256: `{context['candidate_design_sha256']}`",
-        f"- Analysis payload SHA-256: `{context['analysis_sha256']}`",
-        f"- Benchmark profile: `{context['benchmark_profile_id']}`",
-        f"- Hypervolume reference: `{tuple(PRIMARY_REFERENCE_POINT)}`",
-        f"- Outcome: **{analysis['outcome']}**",
-        "",
-        f"{scope} is reported on its own. It is a {seed_count}-seed comparison and must never "
-        "be described as five-seed confirmation. The PostgreSQL default is an interleaved "
-        "reference, not a method row, and consumes no candidate slot.",
-        "",
-        "## Method outcomes",
-        "",
-        _markdown_table(
+    unified = bool(analysis.get("unified_five_seed_cohort"))
+    lines: list[str] = [f"# Protocol-v2 {scope} primary comparison report", ""]
+    if unified:
+        lines.extend(
             [
-                {key: _round(value) for key, value in row.items()}
-                for row in tables["method-outcomes"]
-            ],
+                f"- Analysis payload SHA-256: `{context['analysis_sha256']}`",
+                f"- Benchmark profile: `{context['benchmark_profile_id']}`",
+                f"- Hypervolume reference: `{tuple(PRIMARY_REFERENCE_POINT)}`",
+                f"- Outcome: **{analysis['outcome']}**",
+                "",
+                f"This is the unified {seed_count}-seed primary cohort. Seed is the independent "
+                "unit; candidate rows are not independent replicates. The PostgreSQL default "
+                "is an interleaved reference, not a method row, and consumes no candidate slot.",
+                "",
+            ]
+        )
+    else:
+        lines.extend(
             [
-                "label",
-                "logical_slots",
-                "valid_candidate_observations",
-                "candidate_failed_slots",
-                "infrastructure_exhausted_slots",
-                "retained_infrastructure_attempts",
-                "mean_final_hypervolume",
-                "mean_seed_best_throughput_tps",
-                "mean_seed_minimum_p99_ms",
-                "mean_control_relative_tps",
-                "mean_control_relative_p99_ms",
-            ],
-        ),
-        "",
-        "## Seed-level endpoint summaries",
-        "",
-        _markdown_table(
-            [
-                {
-                    "metric": row["metric"],
-                    "direction": row["direction"],
-                    "method": METHOD_LABELS.get(str(row["method"]), str(row["method"])),
-                    "n": row["n"],
-                    "mean": _round(row["mean"]),
-                    "median": _round(row["median"]),
-                    "sd": _round(row["standard_deviation"]),
-                    "mad": _round(row["median_absolute_deviation"]),
-                    "bootstrap_ci_95": [_round(value) for value in list(row["bootstrap_ci_95"])],
-                }
-                for row in tables["seed-level-statistics"]
-            ],
-            [
-                "metric",
-                "direction",
-                "method",
-                "n",
-                "mean",
-                "median",
-                "sd",
-                "mad",
-                "bootstrap_ci_95",
-            ],
-        ),
-        "",
-        "## Pairwise method contrasts",
-        "",
-        _markdown_table(
-            [
-                {
-                    "metric": row["metric"],
-                    "baseline": METHOD_LABELS.get(
-                        str(row["baseline_method"]), str(row["baseline_method"])
-                    ),
-                    "treatment": METHOD_LABELS.get(
-                        str(row["treatment_method"]), str(row["treatment_method"])
-                    ),
-                    "mean_difference": _round(row["mean_difference"]),
-                    "cliffs_delta": _round(row["cliffs_delta"]),
-                    "permutation_p": _round(row["permutation_p_value"]),
-                    "holm_p": _round(row["holm_adjusted_p_value_within_metric_family"]),
-                }
-                for row in tables["pairwise-contrasts"]
-            ],
-            [
-                "metric",
-                "baseline",
-                "treatment",
-                "mean_difference",
-                "cliffs_delta",
-                "permutation_p",
-                "holm_p",
-            ],
-        ),
-        "",
-        "## Default-control drift",
-        "",
-        _markdown_table(
-            [{key: _round(value) for key, value in row.items()} for row in tables["default-drift"]],
-            [
-                "seed",
-                "valid_controls",
-                "fitted_tps_change",
-                "absolute_fitted_tps_change_relative_to_control_mean",
-                "fitted_p99_change_ms",
-                "flagged",
-                "campaign_killing",
-            ],
-        ),
-        "",
-        "## Safety and failure accounting",
-        "",
-        _markdown_table(
-            tables["safety-and-failures"],
-            [
-                "method",
-                "logical_slots",
-                "valid_candidate_observations",
-                "completed_but_invalid_slots",
-                "candidate_failed_slots",
-                "infrastructure_exhausted_slots",
-                "retained_infrastructure_attempts",
-                "slots_with_infrastructure_retry",
-            ],
-        ),
-        "",
-        "## Nondominated candidates",
-        "",
-        _markdown_table(
-            [
-                {
-                    "seed": row["seed"],
-                    "physical_method": row["physical_method"],
-                    "global_position": row["global_position"],
-                    "throughput_tps": _round(row["throughput_tps"]),
-                    "p99_ms": _round(row["p99_ms"]),
-                    "requested_configuration": row["requested_configuration"],
-                }
-                for row in tables["pareto-front"]
-            ],
-            [
-                "seed",
-                "physical_method",
-                "global_position",
-                "throughput_tps",
-                "p99_ms",
-                "requested_configuration",
-            ],
-        ),
-        "",
-        "## Figures",
-        "",
-    ]
+                f"- Campaign: `{context['campaign_id']}`",
+                f"- Primary block: `{context['primary_block_id']}`",
+                f"- Manifest SHA-256: `{context['manifest_sha256']}`",
+                f"- Schedule SHA-256: `{context['schedule_sha256']}`",
+                f"- Candidate-design SHA-256: `{context['candidate_design_sha256']}`",
+                f"- Analysis payload SHA-256: `{context['analysis_sha256']}`",
+                f"- Benchmark profile: `{context['benchmark_profile_id']}`",
+                f"- Hypervolume reference: `{tuple(PRIMARY_REFERENCE_POINT)}`",
+                f"- Outcome: **{analysis['outcome']}**",
+                "",
+                f"{scope} is reported on its own. It is a {seed_count}-seed comparison and must "
+                "never be described as five-seed confirmation. The PostgreSQL default is an "
+                "interleaved reference, not a method row, and consumes no candidate slot.",
+                "",
+            ]
+        )
+    lines.extend(
+        [
+            "## Method outcomes",
+            "",
+            _markdown_table(
+                [
+                    {key: _round(value) for key, value in row.items()}
+                    for row in tables["method-outcomes"]
+                ],
+                [
+                    "label",
+                    "logical_slots",
+                    "valid_candidate_observations",
+                    "candidate_failed_slots",
+                    "infrastructure_exhausted_slots",
+                    "retained_infrastructure_attempts",
+                    "mean_final_hypervolume",
+                    "mean_seed_best_throughput_tps",
+                    "mean_seed_minimum_p99_ms",
+                    "mean_control_relative_tps",
+                    "mean_control_relative_p99_ms",
+                ],
+            ),
+            "",
+            "## Seed-level endpoint summaries",
+            "",
+            _markdown_table(
+                [
+                    {
+                        "metric": row["metric"],
+                        "direction": row["direction"],
+                        "method": METHOD_LABELS.get(str(row["method"]), str(row["method"])),
+                        "n": row["n"],
+                        "mean": _round(row["mean"]),
+                        "median": _round(row["median"]),
+                        "sd": _round(row["standard_deviation"]),
+                        "mad": _round(row["median_absolute_deviation"]),
+                        "bootstrap_ci_95": [
+                            _round(value) for value in list(row["bootstrap_ci_95"])
+                        ],
+                    }
+                    for row in tables["seed-level-statistics"]
+                ],
+                [
+                    "metric",
+                    "direction",
+                    "method",
+                    "n",
+                    "mean",
+                    "median",
+                    "sd",
+                    "mad",
+                    "bootstrap_ci_95",
+                ],
+            ),
+            "",
+            "## Pairwise method contrasts",
+            "",
+            _markdown_table(
+                [
+                    {
+                        "metric": row["metric"],
+                        "baseline": METHOD_LABELS.get(
+                            str(row["baseline_method"]), str(row["baseline_method"])
+                        ),
+                        "treatment": METHOD_LABELS.get(
+                            str(row["treatment_method"]), str(row["treatment_method"])
+                        ),
+                        "mean_difference": _round(row["mean_difference"]),
+                        "cliffs_delta": _round(row["cliffs_delta"]),
+                        "permutation_p": _round(row["permutation_p_value"]),
+                        "holm_p": _round(row["holm_adjusted_p_value_within_metric_family"]),
+                    }
+                    for row in tables["pairwise-contrasts"]
+                ],
+                [
+                    "metric",
+                    "baseline",
+                    "treatment",
+                    "mean_difference",
+                    "cliffs_delta",
+                    "permutation_p",
+                    "holm_p",
+                ],
+            ),
+            "",
+            "## Default-control drift",
+            "",
+            _markdown_table(
+                [
+                    {key: _round(value) for key, value in row.items()}
+                    for row in tables["default-drift"]
+                ],
+                [
+                    "seed",
+                    "valid_controls",
+                    "fitted_tps_change",
+                    "absolute_fitted_tps_change_relative_to_control_mean",
+                    "fitted_p99_change_ms",
+                    "flagged",
+                    "campaign_killing",
+                ],
+            ),
+            "",
+            "## Safety and failure accounting",
+            "",
+            _markdown_table(
+                tables["safety-and-failures"],
+                [
+                    "method",
+                    "logical_slots",
+                    "valid_candidate_observations",
+                    "completed_but_invalid_slots",
+                    "candidate_failed_slots",
+                    "infrastructure_exhausted_slots",
+                    "retained_infrastructure_attempts",
+                    "slots_with_infrastructure_retry",
+                ],
+            ),
+            "",
+            "## Nondominated candidates",
+            "",
+            _markdown_table(
+                [
+                    {
+                        "seed": row["seed"],
+                        "physical_method": row["physical_method"],
+                        "throughput_tps": _round(row["throughput_tps"]),
+                        "p99_ms": _round(row["p99_ms"]),
+                        "requested_configuration": row["requested_configuration"],
+                        **({} if unified else {"global_position": row["global_position"]}),
+                    }
+                    for row in tables["pareto-front"]
+                ],
+                (
+                    [
+                        "seed",
+                        "physical_method",
+                        "throughput_tps",
+                        "p99_ms",
+                        "requested_configuration",
+                    ]
+                    if unified
+                    else [
+                        "seed",
+                        "physical_method",
+                        "global_position",
+                        "throughput_tps",
+                        "p99_ms",
+                        "requested_configuration",
+                    ]
+                ),
+            ),
+            "",
+            "## Figures",
+            "",
+        ]
+    )
     for name in sorted(FIGURES):
         lines.append(f"- `figures/{name}`")
     lines.extend(
@@ -1037,6 +1116,11 @@ def render_markdown(analysis: dict[str, Any], context: dict[str, Any]) -> str:
             "## Inference guards",
             "",
             f"- {analysis['inference_guard']}",
+            *(
+                [f"- {analysis['endpoint_independence_guard']}"]
+                if analysis.get("endpoint_independence_guard")
+                else []
+            ),
             f"- {analysis['interpretation_guard']}",
             f"- Drift flags are transparency markers; they never terminate or discard {scope}.",
             "- Retained infrastructure attempts consume no candidate slot and never train a GP.",
@@ -1075,6 +1159,8 @@ def render_primary_report(
     analysis: dict[str, Any],
     context: dict[str, Any],
     output_dir: Path,
+    *,
+    legacy_drift_colors: bool = False,
 ) -> dict[str, Any]:
     """Write the complete Wave A report tree and return its hash index.
 
@@ -1087,7 +1173,7 @@ def render_primary_report(
     tables = primary_tables(analysis)
     files: list[dict[str, Any]] = []
     _write(
-        root / "primary-report.md",
+        root / str(context.get("report_filename", "primary-report.md")),
         render_markdown(analysis, context).encode("utf-8"),
         files,
         root,
@@ -1095,9 +1181,17 @@ def render_primary_report(
     for name in sorted(tables):
         _write(root / "tables" / f"{name}.csv", _csv_bytes(tables[name]), files, root)
     for name in sorted(FIGURES):
-        _write(root / "figures" / name, FIGURES[name](analysis).encode("utf-8"), files, root)
+        svg = (
+            figure_default_drift(analysis, legacy_colors=True)
+            if legacy_drift_colors and name == "figure-default-drift-by-position.svg"
+            else FIGURES[name](analysis)
+        )
+        _write(root / "figures" / name, svg.encode("utf-8"), files, root)
     index = {
-        "report_kind": f"thesis-protocol-v2-primary-{str(context.get('wave', 'A')).lower()}",
+        "report_kind": context.get(
+            "report_kind",
+            f"thesis-protocol-v2-primary-{str(context.get('wave', 'A')).lower()}",
+        ),
         "evidence_role": context.get("evidence_role", "PRIMARY"),
         "deterministic": True,
         "context": context,
@@ -1109,7 +1203,7 @@ def render_primary_report(
         "payload_sha256": _canonical_sha256(tables),
     }
     encoded = (json.dumps(index, indent=2, sort_keys=True, default=str) + "\n").encode("utf-8")
-    path = root / "primary-report-index.json"
+    path = root / str(context.get("index_filename", "primary-report-index.json"))
     path.write_bytes(encoded)
     return {
         "output_dir": str(root),

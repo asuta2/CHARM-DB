@@ -1,25 +1,19 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import os
-import platform
 import re
 import shutil
 import subprocess
 import time
-import uuid
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from psycopg.types.json import Jsonb
-
 from charmdb.config import Settings
-from charmdb.db import connect
-from charmdb.metrics import capture_snapshot, numeric_difference, percentile
+from charmdb.metrics import percentile
 
 PGBENCH_MAINTENANCE_POLICY = "canonical-baseline-only-no-vacuum"
 
@@ -658,193 +652,3 @@ def _parse_tps(output: str) -> float:
     if not matches:
         raise ValueError("pgbench output did not contain TPS")
     return float(matches[-1])
-
-
-def _sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
-def benchmark_default(
-    settings: Settings,
-    active_configuration: dict[str, str] | None = None,
-    label: str = "default",
-    fidelity: int = 3,
-    benchmark_profile: str = "development-default",
-) -> tuple[uuid.UUID, Path, WorkloadResult]:
-    settings.assert_target_allowed()
-    if fidelity not in {2, 3, 4}:
-        raise ValueError("executed benchmark fidelity must be F2, F3, or F4")
-    if shutil.which("pgbench") is None:
-        raise RuntimeError("pgbench is not available on PATH")
-
-    campaign_id = uuid.uuid4()
-    trial_id = uuid.uuid4()
-    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    relative_dir = Path("raw") / str(campaign_id) / str(trial_id)
-    output_dir = settings.artifact_dir / relative_dir
-    output_dir.mkdir(parents=True, exist_ok=False)
-
-    warmup_command = [
-        "pgbench",
-        "-h",
-        settings.target_host,
-        "-p",
-        str(settings.target_port),
-        "-U",
-        settings.target_user,
-        "-d",
-        settings.target_db,
-        "-c",
-        str(settings.benchmark_concurrency),
-        "-j",
-        str(min(4, settings.benchmark_concurrency)),
-        "-T",
-        str(settings.benchmark_warmup_seconds),
-        "--random-seed",
-        str(settings.benchmark_seed),
-        *_pgbench_maintenance_arguments(),
-    ]
-    if settings.benchmark_warmup_seconds:
-        _run(warmup_command, settings.target_password, settings.benchmark_warmup_seconds + 60)
-
-    with connect(settings.target_dsn) as target:
-        before = capture_snapshot(target)
-        target.commit()
-
-    log_prefix = output_dir / f"pgbench-{stamp}"
-    command = [
-        "pgbench",
-        "-h",
-        settings.target_host,
-        "-p",
-        str(settings.target_port),
-        "-U",
-        settings.target_user,
-        "-d",
-        settings.target_db,
-        "-c",
-        str(settings.benchmark_concurrency),
-        "-j",
-        str(min(4, settings.benchmark_concurrency)),
-        "-T",
-        str(settings.benchmark_duration_seconds),
-        "--random-seed",
-        str(settings.benchmark_seed),
-        *_pgbench_maintenance_arguments(),
-        "--log",
-        f"--log-prefix={log_prefix}",
-        "--progress=5",
-    ]
-    started = time.monotonic()
-    completed = _run(command, settings.target_password, settings.benchmark_duration_seconds + 90)
-    elapsed = time.monotonic() - started
-
-    with connect(settings.target_dsn) as target:
-        after = capture_snapshot(target)
-        target.commit()
-
-    log_paths = sorted(output_dir.glob(f"{log_prefix.name}*"))
-    latencies, transactions, failures = parse_pgbench_logs(log_paths)
-    if not latencies:
-        raise RuntimeError("pgbench produced no usable latency samples")
-    result = WorkloadResult(
-        transactions=transactions,
-        failures=failures,
-        throughput_tps=_parse_tps(completed.stdout + completed.stderr),
-        p50_ms=percentile(latencies, 0.50),
-        p95_ms=percentile(latencies, 0.95),
-        p99_ms=percentile(latencies, 0.99),
-        duration_seconds=elapsed,
-        latency_samples=len(latencies),
-    )
-    payload = {
-        "campaign_id": str(campaign_id),
-        "trial_id": str(trial_id),
-        "benchmark_profile": benchmark_profile,
-        "fidelity": fidelity,
-        "random_seed": settings.benchmark_seed,
-        "warmup_seconds": settings.benchmark_warmup_seconds,
-        "measurement_seconds": settings.benchmark_duration_seconds,
-        "concurrency": settings.benchmark_concurrency,
-        "active_configuration": active_configuration or {},
-        "command": command,
-        "result": asdict(result),
-        "metrics_before": before,
-        "metrics_after": after,
-        "metric_difference": numeric_difference(before, after),
-        "client": {"python": platform.python_version(), "platform": platform.platform()},
-        "pgbench_stdout": completed.stdout,
-        "pgbench_stderr": completed.stderr,
-    }
-    result_path = output_dir / "trial.json"
-    result_path.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
-
-    with connect(settings.control_dsn) as control:
-        with control.cursor() as cur:
-            cur.execute(
-                """INSERT INTO charm_control.campaigns
-                (campaign_id, name, mode, status, objective_definition, constraint_definition)
-                VALUES (%s, %s, 'BASELINE', 'COMPLETED', %s, %s)""",
-                (
-                    campaign_id,
-                    f"{label}-{stamp}",
-                    Jsonb({"maximize": "throughput_tps"}),
-                    Jsonb({"failure_rate_max": 0.0}),
-                ),
-            )
-            cur.execute(
-                """INSERT INTO charm_control.trials
-                (trial_id, campaign_id, state, benchmark_profile, fidelity, random_seed,
-                 active_configuration, objective_values, constraint_values, software_versions,
-                 host_snapshot, started_at, completed_at)
-                VALUES (%s, %s, 'COMPLETED', %s, %s, %s, %s,
-                        %s, %s, %s, '{}'::jsonb, clock_timestamp() - (%s * interval '1 second'),
-                        clock_timestamp())""",
-                (
-                    trial_id,
-                    campaign_id,
-                    benchmark_profile,
-                    fidelity,
-                    settings.benchmark_seed,
-                    Jsonb(active_configuration or {}),
-                    Jsonb({"throughput_tps": result.throughput_tps, "p99_ms": result.p99_ms}),
-                    Jsonb({"failures": result.failures}),
-                    Jsonb({"server_version": after["server_version"], "charmdb": "0.1.0"}),
-                    elapsed,
-                ),
-            )
-            cur.execute(
-                """INSERT INTO charm_control.trial_transitions
-                (trial_id, from_state, to_state, reason) VALUES
-                (%s, NULL, 'CREATED', 'baseline created'),
-                (%s, 'CREATED', 'WARMING_UP', 'warm-up started'),
-                (%s, 'WARMING_UP', 'RUNNING_FULL_EVALUATION', 'measurement started'),
-                (%s, 'RUNNING_FULL_EVALUATION', 'COLLECTING_METRICS', 'workload completed'),
-                (%s, 'COLLECTING_METRICS', 'COMPLETED', 'valid metrics persisted')""",
-                (trial_id, trial_id, trial_id, trial_id, trial_id),
-            )
-            for phase, snapshot in (("before", before), ("after", after)):
-                cur.execute(
-                    """INSERT INTO charm_control.metric_snapshots
-                    (snapshot_id, trial_id, phase, source, payload)
-                    VALUES (%s, %s, %s, 'postgresql', %s)""",
-                    (uuid.uuid4(), trial_id, phase, Jsonb(snapshot)),
-                )
-            cur.execute(
-                """INSERT INTO charm_control.artifacts
-                (artifact_id, trial_id, kind, relative_path, sha256, byte_size)
-                VALUES (%s, %s, 'trial-json', %s, %s, %s)""",
-                (
-                    uuid.uuid4(),
-                    trial_id,
-                    str(relative_dir / "trial.json"),
-                    _sha256(result_path),
-                    result_path.stat().st_size,
-                ),
-            )
-        control.commit()
-    return trial_id, result_path, result

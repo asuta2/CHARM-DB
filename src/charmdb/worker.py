@@ -46,7 +46,7 @@ from charmdb.workload import (
 )
 
 V2_BENCHMARK_WORKFLOWS = frozenset({"V2_BASELINE_BENCHMARK", "V2_TUNED_BENCHMARK"})
-TUNED_BENCHMARK_WORKFLOWS = frozenset({"TUNED_BENCHMARK", "V2_TUNED_BENCHMARK"})
+TUNED_BENCHMARK_WORKFLOWS = frozenset({"V2_TUNED_BENCHMARK"})
 SATURATION_PHASE1_WORKFLOW = "V2_SATURATION_PHASE1"
 TUNED_PRE_MEASUREMENT_RETRY_STATES = frozenset(
     {
@@ -237,6 +237,13 @@ def default_worker_id() -> str:
 
 
 def validate_transition(workflow_kind: str, current: str, target: str) -> None:
+    if workflow_kind not in {
+        "HEALTH_CHECK",
+        "V2_BASELINE_BENCHMARK",
+        "V2_TUNED_BENCHMARK",
+        SATURATION_PHASE1_WORKFLOW,
+    }:
+        raise ValueError(f"unsupported workflow {workflow_kind}")
     if current in TERMINAL_STATES:
         raise ValueError(f"terminal state {current} cannot transition to {target}")
     if target not in ACTIVE_STATES | TERMINAL_STATES:
@@ -245,14 +252,6 @@ def validate_transition(workflow_kind: str, current: str, target: str) -> None:
         allowed = HEALTH_TRANSITIONS.get(current, frozenset())
         if target not in allowed:
             raise ValueError(f"invalid HEALTH_CHECK transition {current} -> {target}")
-    if workflow_kind == "BASELINE_BENCHMARK":
-        allowed = BENCHMARK_TRANSITIONS.get(current, frozenset())
-        if target not in allowed:
-            raise ValueError(f"invalid BASELINE_BENCHMARK transition {current} -> {target}")
-    if workflow_kind == "TUNED_BENCHMARK":
-        allowed = TUNED_BENCHMARK_TRANSITIONS.get(current, frozenset())
-        if target not in allowed:
-            raise ValueError(f"invalid TUNED_BENCHMARK transition {current} -> {target}")
     if workflow_kind == "V2_BASELINE_BENCHMARK":
         allowed = V2_BENCHMARK_TRANSITIONS.get(current, frozenset())
         if target not in allowed:
@@ -488,7 +487,7 @@ def create_health_trial(
     return trial_id
 
 
-def create_baseline_benchmark_trial(
+def _create_baseline_benchmark_trial(
     settings: Settings,
     campaign_id: uuid.UUID,
     seed: int,
@@ -514,9 +513,8 @@ def create_baseline_benchmark_trial(
         raise ValueError("executed benchmark fidelity must be F2, F3, or F4")
     if p99_slo_ms <= 0 or max_attempts < 1:
         raise ValueError("p99 SLO and max_attempts must be positive")
-    is_v2 = preflight_id is not None or evidence_role is not None or evaluation_role is not None
-    if is_v2 and (preflight_id is None or evidence_role is None):
-        raise ValueError("v2 baseline trials require preflight_id and evidence_role")
+    if preflight_id is None or evidence_role is None:
+        raise ValueError("baseline trials require preflight_id and evidence_role")
     if evidence_role not in {
         None,
         "INFRASTRUCTURE",
@@ -557,7 +555,7 @@ def create_baseline_benchmark_trial(
         payload["restore_mechanism"] = restore_mechanism
         if physical_archive_id is not None:
             payload["physical_archive_id"] = str(physical_archive_id)
-    workflow_kind = "V2_BASELINE_BENCHMARK" if is_v2 else "BASELINE_BENCHMARK"
+    workflow_kind = "V2_BASELINE_BENCHMARK"
     with connect(settings.control_dsn) as conn, conn.cursor() as cur:
         cur.execute(
             "SELECT status,emergency_stop FROM charm_control.campaigns WHERE campaign_id=%s",
@@ -588,10 +586,10 @@ def create_baseline_benchmark_trial(
                 Jsonb(payload),
                 max_attempts,
                 idempotency_key,
-                "thesis-protocol-v2" if is_v2 else None,
+                "thesis-protocol-v2",
                 evidence_role,
                 evaluation_role,
-                is_v2,
+                True,
             ),
         )
         inserted = cur.fetchone()
@@ -612,9 +610,7 @@ def create_baseline_benchmark_trial(
             VALUES (%s,NULL,'CREATED',%s,%s)""",
             (
                 trial_id,
-                "protocol-v2 baseline benchmark created"
-                if is_v2
-                else "durable baseline benchmark created",
+                "protocol-v2 baseline benchmark created",
                 Jsonb(
                     {
                         "idempotency_key": idempotency_key,
@@ -629,7 +625,7 @@ def create_baseline_benchmark_trial(
     return trial_id
 
 
-def create_v2_baseline_benchmark_trial(
+def create_baseline_benchmark_trial(
     settings: Settings,
     campaign_id: uuid.UUID,
     preflight_id: uuid.UUID,
@@ -646,7 +642,7 @@ def create_v2_baseline_benchmark_trial(
     restore_mechanism: str = "logical-restore",
     physical_archive_id: uuid.UUID | None = None,
 ) -> uuid.UUID:
-    return create_baseline_benchmark_trial(
+    return _create_baseline_benchmark_trial(
         settings,
         campaign_id,
         seed,
@@ -665,107 +661,9 @@ def create_v2_baseline_benchmark_trial(
     )
 
 
+
+
 def create_tuned_benchmark_trial(
-    settings: Settings,
-    campaign_id: uuid.UUID,
-    candidate: dict[str, str],
-    seed: int,
-    idempotency_key: str,
-    warmup_seconds: int = 2,
-    duration_seconds: int = 5,
-    concurrency: int = 4,
-    p99_slo_ms: float = 20.0,
-    max_attempts: int = 3,
-) -> uuid.UUID:
-    if not idempotency_key.strip():
-        raise ValueError("idempotency_key cannot be empty")
-    if not candidate or len(candidate) > 3:
-        raise ValueError("initial durable tuned trial requires one to three knobs")
-    requested = {str(name): str(value) for name, value in candidate.items()}
-    metadata = discover_knobs(settings, set(requested))
-    validate_candidate(requested, metadata)
-    requires_restart = any(row["context"] == "postmaster" for row in metadata)
-    initial = {str(row["name"]): str(row["setting"]) for row in metadata}
-    boot = {str(row["name"]): str(row["boot_val"]) for row in metadata}
-    if initial != boot:
-        raise ValueError(
-            f"tuned trial must start at boot defaults: expected={boot}, active={initial}"
-        )
-    if warmup_seconds < 0 or duration_seconds < 1 or concurrency < 1:
-        raise ValueError("invalid benchmark duration or concurrency")
-    if p99_slo_ms <= 0 or max_attempts < 1:
-        raise ValueError("p99 SLO and max_attempts must be positive")
-    trial_id = uuid.uuid4()
-    payload = {
-        "warmup_seconds": warmup_seconds,
-        "duration_seconds": duration_seconds,
-        "concurrency": concurrency,
-        "pgbench_maintenance_policy": PGBENCH_MAINTENANCE_POLICY,
-        "seed": seed,
-        "p99_slo_ms": p99_slo_ms,
-        "expected_configuration": requested,
-        "previous_configuration": initial,
-        "requested_configuration": requested,
-        "requires_restart": requires_restart,
-        "activation_class": "restart" if requires_restart else "reload",
-        "label": "restart-knob-candidate" if requires_restart else "reload-knob-candidate",
-    }
-    with connect(settings.control_dsn) as conn, conn.cursor() as cur:
-        cur.execute(
-            "SELECT status,emergency_stop FROM charm_control.campaigns WHERE campaign_id=%s",
-            (campaign_id,),
-        )
-        campaign = cur.fetchone()
-        if campaign is None:
-            raise ValueError(f"unknown campaign {campaign_id}")
-        if campaign["status"] not in {"CREATED", "RUNNING", "PAUSED"}:
-            raise ValueError(f"campaign does not accept trials in state {campaign['status']}")
-        if campaign["emergency_stop"]:
-            raise ValueError("campaign emergency stop is active")
-        cur.execute(
-            """INSERT INTO charm_control.trials
-            (trial_id,campaign_id,state,benchmark_profile,fidelity,random_seed,
-             requested_configuration,workflow_kind,workflow_payload,max_attempts,idempotency_key)
-            VALUES (%s,%s,'CREATED','durable-tuned-smoke',3,%s,%s,
-                    'TUNED_BENCHMARK',%s,%s,%s)
-            ON CONFLICT (campaign_id,idempotency_key) WHERE idempotency_key IS NOT NULL
-            DO NOTHING RETURNING trial_id""",
-            (
-                trial_id,
-                campaign_id,
-                seed,
-                Jsonb(requested),
-                Jsonb(payload),
-                max_attempts,
-                idempotency_key,
-            ),
-        )
-        inserted = cur.fetchone()
-        if inserted is None:
-            cur.execute(
-                """SELECT trial_id FROM charm_control.trials
-                   WHERE campaign_id=%s AND idempotency_key=%s""",
-                (campaign_id, idempotency_key),
-            )
-            existing = cur.fetchone()
-            if existing is None:
-                raise RuntimeError("idempotent tuned trial lookup failed")
-            conn.commit()
-            return existing["trial_id"]  # type: ignore[no-any-return]
-        cur.execute(
-            """INSERT INTO charm_control.trial_transitions
-            (trial_id,from_state,to_state,reason,details)
-            VALUES (%s,NULL,'CREATED','durable tuned benchmark created',%s)""",
-            (
-                trial_id,
-                Jsonb({"idempotency_key": idempotency_key, "candidate": requested}),
-            ),
-        )
-        conn.commit()
-    return trial_id
-
-
-def create_v2_tuned_benchmark_trial(
     settings: Settings,
     campaign_id: uuid.UUID,
     preflight_id: uuid.UUID,
@@ -952,6 +850,9 @@ def claim_next_trial(
                 FROM charm_control.trials t
                 JOIN charm_control.campaigns c USING(campaign_id)
                 WHERE c.status='RUNNING' AND NOT c.emergency_stop
+                  AND t.workflow_kind IN
+                      ('HEALTH_CHECK','V2_BASELINE_BENCHMARK','V2_TUNED_BENCHMARK',
+                       'V2_SATURATION_PHASE1')
                   AND (%s::uuid IS NULL OR t.campaign_id=%s)
                   AND t.completed_at IS NULL
                   AND t.attempt_count < t.max_attempts
@@ -2218,8 +2119,6 @@ def run_once(
     if lease is None:
         return WorkerResult(False, None, None, False)
     if lease.workflow_kind in {
-        "BASELINE_BENCHMARK",
-        "TUNED_BENCHMARK",
         "V2_BASELINE_BENCHMARK",
         "V2_TUNED_BENCHMARK",
         SATURATION_PHASE1_WORKFLOW,

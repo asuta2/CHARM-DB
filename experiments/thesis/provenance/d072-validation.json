@@ -1,0 +1,39 @@
+{
+  "decision": "D072",
+  "deployment_id": "c8e561f0-fce1-5c97-b2e8-d3a5bf3d84b2",
+  "git_head": "2c22b39be734113745ee830d30703315dae0b3c7",
+  "live_status": {
+    "activation_authorized": true,
+    "blockers": [],
+    "expected_champion_active": true,
+    "state_matches_target": true,
+    "target_health": {
+      "active_campaigns": 0,
+      "active_charm_sessions": 0,
+      "database": "charm_target",
+      "healthy": true,
+      "managed_indexes": 0,
+      "pending_restart": 0,
+      "relation_rows": {
+        "public.pgbench_accounts": 50000000,
+        "public.pgbench_branches": 500,
+        "public.pgbench_history": 3343958,
+        "public.pgbench_tellers": 5000
+      },
+      "version": "PostgreSQL 18.1 (Debian 18.1-1.pgdg13+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit"
+    }
+  },
+  "live_status_capture_file_sha256": "dad2f962f1fd85019d1499108b87aa4c21aa3337a61c6d88db40745d22398869",
+  "ruff": "PASS",
+  "scope": "Focused closeout checks, not complete unit/integration suite",
+  "source_file_sha256": {
+    "scripts/audit_thesis_closeout.py": "a0093ca007f881381e886657ffdf24e0cbeb28984b199762958e3af9e5f7bd96",
+    "tests/unit/v2/test_closeout_audit.py": "c0432706d9085bd0a91ef837f23c8c107da81053b4c9e80647b55fd87ee88d41",
+    "uv.lock": "6a404ef7eec56f9df9fae0f38eafe741cc41024c2ab005fe1732e53aba9c1fbd"
+  },
+  "tests": {
+    "command": ".venv/Scripts/python.exe -m pytest tests/unit/v2/test_closeout_audit.py",
+    "passed": 3
+  },
+  "working_tree_has_uncommitted_implementation": true
+}

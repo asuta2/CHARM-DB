@@ -36,6 +36,14 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/charmdb"]
 
+[tool.hatch.build.targets.sdist]
+exclude = [
+  "/docs/history",
+  "/experiments/historical/authored-scripts",
+  "/experiments/thesis/archive/docx",
+  "/results",
+]
+
 [tool.pytest.ini_options]
 addopts = "-q --strict-markers"
 testpaths = ["tests"]

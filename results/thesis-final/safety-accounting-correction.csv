@@ -1,0 +1,8 @@
+scope,slots,total_attempts_including_first,completed_attempts,retained_failed_attempts,additional_attempts,slots_retried,attribution
+ALL_PHYSICAL,655,657,655,2,2,2,physical
+bo_qlognehvi_multiobjective,150,152,150,2,2,2,shared BO rows attributed to each BO method; do not sum methods
+bo_qlognei_throughput,150,152,150,2,2,2,shared BO rows attributed to each BO method; do not sum methods
+bo_qlognparego_multiobjective,150,152,150,2,2,2,shared BO rows attributed to each BO method; do not sum methods
+postgresql_default,25,25,25,0,0,0,shared BO rows attributed to each BO method; do not sum methods
+random,150,150,150,0,0,0,shared BO rows attributed to each BO method; do not sum methods
+sobol,150,150,150,0,0,0,shared BO rows attributed to each BO method; do not sum methods

@@ -1,0 +1,86 @@
+{
+  "dataset": {
+    "snapshot": "REPLACE_WITH_IMMUTABLE_SNAPSHOT_ID",
+    "scale": 10,
+    "schema_sha256": "REPLACE_WITH_SCHEMA_DIGEST"
+  },
+  "workload_contexts": [
+    {
+      "label": "transactional-optimization",
+      "version": 1,
+      "partition": "optimization"
+    },
+    {
+      "label": "transactional-hidden",
+      "version": 1,
+      "partition": "hidden-validation"
+    }
+  ],
+  "execution_profile": {
+    "warmup_seconds": 120,
+    "measurement_seconds": 600,
+    "concurrency": 4,
+    "failure_limit": 5
+  },
+  "search_space": {
+    "version": "reload-knobs-v1",
+    "parameters": {
+      "random_page_cost": {
+        "type": "continuous",
+        "lower": 1.0,
+        "upper": 4.0
+      },
+      "work_mem": {
+        "type": "categorical",
+        "values": [1024, 2048, 4096, 8192, 16384, 32768]
+      },
+      "effective_io_concurrency": {
+        "type": "integer",
+        "lower": 0,
+        "upper": 200
+      }
+    }
+  },
+  "method_parameters": {
+    "initial_observations": 4,
+    "candidate_pool_size": 2048,
+    "posterior_samples": 256,
+    "max_attempts": 3
+  },
+  "resource_limits": {
+    "target_cpus": 4,
+    "target_memory_bytes": 4294967296,
+    "docker_memory_bytes": 8282886144
+  },
+  "cache_policy": "restored-arm-block-120s-warmup-no-manual-cache-drop",
+  "software_versions": {
+    "charmdb": "0.1.0",
+    "postgresql_target": "18.1",
+    "postgresql_control": "18.4"
+  },
+  "budget_accounting": {
+    "kind": "F3_EQUIVALENT_WALL_CLOCK",
+    "relative_tolerance": 0.05,
+    "f3_reference_wall_clock_seconds": "REPLACE_WITH_MEASURED_F3_REFERENCE"
+  },
+  "objective_definition": {
+    "maximize": [
+      "throughput_tps",
+      "negative_p99_ms"
+    ],
+    "reference_point": [
+      0.0,
+      -20.0
+    ]
+  },
+  "constraint_definition": {
+    "p99_ms_max": 20.0,
+    "failures_max": 0,
+    "hard_safety_always_active": true
+  },
+  "practical_margins": {
+    "throughput_relative": 0.05,
+    "p99_ms_absolute": 1.0,
+    "hypervolume_relative": 0.05
+  }
+}

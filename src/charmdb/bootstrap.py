@@ -10,14 +10,14 @@ import sys
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import urlsplit
 
 from charmdb.config import Settings
 from charmdb.db import connect
 from charmdb.protocol import PROTOCOL_ID, load_manifest
-from charmdb.provenance import source_tree_sha256
+from charmdb.provenance import source_inventory_sha256_v2, source_tree_sha256
 
 EXPECTED_IMAGE = "postgres@sha256:5773fe724c49c42a7a9ca70202e11e1dff21fb7235b335a73f39297d200b73a2"
 EXPECTED_EXTENSIONS = frozenset({"pg_stat_statements", "pg_buffercache", "pg_prewarm"})
@@ -548,18 +548,21 @@ def run_bootstrap_preflight(
         )
     )
     configured_artifacts = settings.artifact_dir.resolve()
-    expected_artifacts = (repository_root / "artifacts-newpc/v2").resolve()
+    legacy_artifacts = (repository_root / "artifacts").resolve()
     isolated = (
-        configured_artifacts == expected_artifacts
-        or expected_artifacts in configured_artifacts.parents
+        configured_artifacts != repository_root
+        and configured_artifacts != legacy_artifacts
+        and legacy_artifacts not in configured_artifacts.parents
+        and configured_artifacts != (repository_root / "src").resolve()
+        and (repository_root / "src").resolve() not in configured_artifacts.parents
     )
     checks.append(
         _check(
             "artifact-root-isolation",
             isolated,
-            "Artifacts are isolated under artifacts-newpc/v2",
-            "CHARMDB_ARTIFACT_DIR must be moved from legacy artifacts to artifacts-newpc/v2",
-            {"configured": str(configured_artifacts), "required_root": str(expected_artifacts)},
+            "Evidence destination is distinct from source and legacy artifacts",
+            "CHARMDB_ARTIFACT_DIR must be distinct from source and legacy artifacts",
+            {"configured": str(configured_artifacts), "legacy_root": str(legacy_artifacts)},
         )
     )
     python_supported = (3, 12) <= sys.version_info[:2] < (3, 14)
@@ -634,6 +637,7 @@ def run_bootstrap_preflight(
     provenance = {
         "git": git,
         "source_tree_sha256": source_tree_sha256(repository_root),
+        "source_inventory_sha256_v2": source_inventory_sha256_v2(repository_root),
         "uv_lock_sha256": _sha256(lock_path) if lock_path.is_file() else None,
         "docker_compose_sha256": _sha256(compose_path) if compose_path.is_file() else None,
         "bootstrap_manifest_sha256": _sha256(manifest_file),
@@ -662,10 +666,14 @@ def bootstrap_report_dict(report: BootstrapReport) -> dict[str, Any]:
 
 def write_bootstrap_report(report: BootstrapReport, output_path: Path) -> Path:
     resolved = output_path.resolve()
-    root = Path(report.repository_root).resolve()
-    allowed_root = (root / PurePosixPath("artifacts-newpc/v2")).resolve()
+    artifact_check = next(
+        (item for item in report.checks if item.name == "artifact-root-isolation"), None
+    )
+    if artifact_check is None or artifact_check.status != "PASS":
+        raise ValueError("bootstrap report has no passing artifact root isolation check")
+    allowed_root = Path(str(artifact_check.evidence["configured"])).resolve()
     if allowed_root != resolved.parent and allowed_root not in resolved.parents:
-        raise ValueError("bootstrap reports must be written under artifacts-newpc/v2")
+        raise ValueError("bootstrap reports must be written under the configured artifact root")
     if resolved.exists():
         raise FileExistsError(f"refusing to overwrite bootstrap evidence: {resolved}")
     resolved.parent.mkdir(parents=True, exist_ok=True)

@@ -1,82 +1,82 @@
-﻿[
-    {
-        "logical_path":  "v2/config/apply-best.json",
-        "sha256":  "230a52de9f2a9dfa258b596f5e2c89b5b70c0985767a91b9f29843a181d40bea",
-        "bytes":  3490
-    },
-    {
-        "logical_path":  "v2/config/candidate-restore-pilot.json",
-        "sha256":  "bcf634b7e32155f21bb8803ea10116d10efdda19b62f87923e3ae01161cf8f44",
-        "bytes":  2595
-    },
-    {
-        "logical_path":  "v2/config/f4-confirmation.json",
-        "sha256":  "a24596995869e20234a4254a7910efaa289b198d9bb7ca7ae17dec3f76c8fc20",
-        "bytes":  8179
-    },
-    {
-        "logical_path":  "v2/config/multi-fidelity.json",
-        "sha256":  "949cf73f966b2f986e2afc870cd9c837ab7eb2b4f61c70c2bdf8dd0253de7c50",
-        "bytes":  5438
-    },
-    {
-        "logical_path":  "v2/config/new-machine-bootstrap.json",
-        "sha256":  "d5a42dd23e46080922383341a2636d1b610cb5b4be039db3adede74236a3501a",
-        "bytes":  793
-    },
-    {
-        "logical_path":  "v2/config/new-machine-default-reference.json",
-        "sha256":  "c73adec56abdbe5ba783ea1353c3b465618ccb32a95f86c9418eabaacab1d4ca",
-        "bytes":  2669
-    },
-    {
-        "logical_path":  "v2/config/parameter-screening-recovery-remediation.json",
-        "sha256":  "3ddbb469da6691fa7496ac39680d68447fc93e78199f25c2ede13acf5f9e57a2",
-        "bytes":  5691
-    },
-    {
-        "logical_path":  "v2/config/parameter-screening-recovery.json",
-        "sha256":  "55e69fb49db2f9374fb6d48544f8e7224fea134708b1505cc3da7a5feb749eb0",
-        "bytes":  4428
-    },
-    {
-        "logical_path":  "v2/config/parameter-screening.json",
-        "sha256":  "bc7473666ca34eb81163166b16ea82b88a05a20b8e27250f9b13c5ef87a2b83a",
-        "bytes":  5392
-    },
-    {
-        "logical_path":  "v2/config/post-screening-temporal-stability.json",
-        "sha256":  "c45d109a9edeeeca7f41a5761fe1e7e7f06be814a2b10309d3a0ccd8ee46b2e8",
-        "bytes":  4312
-    },
-    {
-        "logical_path":  "v2/config/primary-comparison.json",
-        "sha256":  "c576afa6eae9e7a44a6abad61096943494f0cd7875bd999fb66750f067e7baa9",
-        "bytes":  10248
-    },
-    {
-        "logical_path":  "v2/config/primary-wave-b.json",
-        "sha256":  "35d0b57b64fabbbb4b1f27d4c48f05c42eb8b593e9459d342ea93e9b363c3e18",
-        "bytes":  5242
-    },
-    {
-        "logical_path":  "v2/config/sanity-and-saturation.json",
-        "sha256":  "9e76d25cad08486438ada807a018713675bb00050f6874235ca367ce0a5c8ee2",
-        "bytes":  8371
-    },
-    {
-        "logical_path":  "v2/config/screening-interpretation-amendment.json",
-        "sha256":  "4bec49348075559d7245ef44ac7b466116a19a05364049838fbf67f40a73c823",
-        "bytes":  5163
-    },
-    {
-        "logical_path":  "v2/config/warmup-and-f3-duration-pilot.json",
-        "sha256":  "cc3f631aa734efcd7a505c4e7b9d8a945f6650ea765b668754dab362ef04b18c",
-        "bytes":  2160
-    },
-    {
-        "logical_path":  "v2/docs/wave-b-final-analysis-preregistration.md",
-        "sha256":  "6733a2888fbb6a5c792d550f8e13c64498b9ce126f205254385111056b087289",
-        "bytes":  8346
-    }
+[
+  {
+    "logical_path": "v2/config/apply-best.json",
+    "sha256": "230a52de9f2a9dfa258b596f5e2c89b5b70c0985767a91b9f29843a181d40bea",
+    "bytes": 3490
+  },
+  {
+    "logical_path": "v2/config/candidate-restore-pilot.json",
+    "sha256": "bcf634b7e32155f21bb8803ea10116d10efdda19b62f87923e3ae01161cf8f44",
+    "bytes": 2595
+  },
+  {
+    "logical_path": "v2/config/f4-confirmation.json",
+    "sha256": "a24596995869e20234a4254a7910efaa289b198d9bb7ca7ae17dec3f76c8fc20",
+    "bytes": 8179
+  },
+  {
+    "logical_path": "v2/config/multi-fidelity.json",
+    "sha256": "949cf73f966b2f986e2afc870cd9c837ab7eb2b4f61c70c2bdf8dd0253de7c50",
+    "bytes": 5438
+  },
+  {
+    "logical_path": "v2/config/new-machine-bootstrap.json",
+    "sha256": "d5a42dd23e46080922383341a2636d1b610cb5b4be039db3adede74236a3501a",
+    "bytes": 793
+  },
+  {
+    "logical_path": "v2/config/new-machine-default-reference.json",
+    "sha256": "c73adec56abdbe5ba783ea1353c3b465618ccb32a95f86c9418eabaacab1d4ca",
+    "bytes": 2669
+  },
+  {
+    "logical_path": "v2/config/parameter-screening-recovery-remediation.json",
+    "sha256": "3ddbb469da6691fa7496ac39680d68447fc93e78199f25c2ede13acf5f9e57a2",
+    "bytes": 5691
+  },
+  {
+    "logical_path": "v2/config/parameter-screening-recovery.json",
+    "sha256": "55e69fb49db2f9374fb6d48544f8e7224fea134708b1505cc3da7a5feb749eb0",
+    "bytes": 4428
+  },
+  {
+    "logical_path": "v2/config/parameter-screening.json",
+    "sha256": "bc7473666ca34eb81163166b16ea82b88a05a20b8e27250f9b13c5ef87a2b83a",
+    "bytes": 5392
+  },
+  {
+    "logical_path": "v2/config/post-screening-temporal-stability.json",
+    "sha256": "c45d109a9edeeeca7f41a5761fe1e7e7f06be814a2b10309d3a0ccd8ee46b2e8",
+    "bytes": 4312
+  },
+  {
+    "logical_path": "v2/config/primary-comparison.json",
+    "sha256": "c576afa6eae9e7a44a6abad61096943494f0cd7875bd999fb66750f067e7baa9",
+    "bytes": 10248
+  },
+  {
+    "logical_path": "v2/config/primary-wave-b.json",
+    "sha256": "35d0b57b64fabbbb4b1f27d4c48f05c42eb8b593e9459d342ea93e9b363c3e18",
+    "bytes": 5242
+  },
+  {
+    "logical_path": "v2/config/sanity-and-saturation.json",
+    "sha256": "9e76d25cad08486438ada807a018713675bb00050f6874235ca367ce0a5c8ee2",
+    "bytes": 8371
+  },
+  {
+    "logical_path": "v2/config/screening-interpretation-amendment.json",
+    "sha256": "4bec49348075559d7245ef44ac7b466116a19a05364049838fbf67f40a73c823",
+    "bytes": 5163
+  },
+  {
+    "logical_path": "v2/config/warmup-and-f3-duration-pilot.json",
+    "sha256": "cc3f631aa734efcd7a505c4e7b9d8a945f6650ea765b668754dab362ef04b18c",
+    "bytes": 2160
+  },
+  {
+    "logical_path": "v2/docs/wave-b-final-analysis-preregistration.md",
+    "sha256": "6733a2888fbb6a5c792d550f8e13c64498b9ce126f205254385111056b087289",
+    "bytes": 8346
+  }
 ]

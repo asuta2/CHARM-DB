@@ -57,7 +57,7 @@ from charmdb.statistics import descriptive_summary, holm_adjust, paired_comparis
 from charmdb.worker import (
     control_campaign,
     create_campaign,
-    create_v2_tuned_benchmark_trial,
+    create_tuned_benchmark_trial,
     run_once,
 )
 
@@ -700,7 +700,7 @@ def _execute_or_resume_attempt(
         "BO_SHARED_INITIAL": "PRIMARY_BO_SHARED_INITIAL",
         "CANDIDATE": "PRIMARY_CANDIDATE",
     }[str(row["evaluation_role"])]
-    trial_id = create_v2_tuned_benchmark_trial(
+    trial_id = create_tuned_benchmark_trial(
         settings,
         campaign_id,
         FROZEN_PREFLIGHT_ID,

@@ -1,0 +1,227 @@
+{
+  "analysis_payload_sha256": "769f5a0eabdebe272a0a8ae4b7578fd54f72d4a95cd53822e1cb993466a36fb2",
+  "audited_at_utc": "2026-09-14T06:18:47.708106+00:00",
+  "candidate_reliability": [
+    {
+      "local_control_domination_share": 0.13333333333333333,
+      "mean_control_relative_p99_ms": 1.3035503440025675,
+      "mean_control_relative_tps": -0.08322223438938432,
+      "method": "random",
+      "observations_dominating_local_control": 20,
+      "valid_candidate_observations": 150
+    },
+    {
+      "local_control_domination_share": 0.18666666666666668,
+      "mean_control_relative_p99_ms": 1.3639265245581302,
+      "mean_control_relative_tps": -0.07413458392359276,
+      "method": "sobol",
+      "observations_dominating_local_control": 28,
+      "valid_candidate_observations": 150
+    },
+    {
+      "local_control_domination_share": 0.66,
+      "mean_control_relative_p99_ms": -1.3951786762625684,
+      "mean_control_relative_tps": -0.002669874342921831,
+      "method": "bo_qlognei_throughput",
+      "observations_dominating_local_control": 99,
+      "valid_candidate_observations": 150
+    },
+    {
+      "local_control_domination_share": 0.68,
+      "mean_control_relative_p99_ms": -1.5303071659721619,
+      "mean_control_relative_tps": -0.002718723116190781,
+      "method": "bo_qlognparego_multiobjective",
+      "observations_dominating_local_control": 102,
+      "valid_candidate_observations": 150
+    },
+    {
+      "local_control_domination_share": 0.6333333333333333,
+      "mean_control_relative_p99_ms": -1.2321170913509514,
+      "mean_control_relative_tps": -0.009455820906321492,
+      "method": "bo_qlognehvi_multiobjective",
+      "observations_dominating_local_control": 95,
+      "valid_candidate_observations": 150
+    }
+  ],
+  "decision": "D072",
+  "deployment_state_in_export": "ACTIVE",
+  "extra_files": [],
+  "f4_runs": 20,
+  "independent_seeds": [
+    88408573,
+    642754166,
+    740267717,
+    1418705027,
+    1902413987
+  ],
+  "logical_method_slots": 750,
+  "manifest_file_sha256": "8fcfee8eca196a966f86d16ab6e2b7ea91b3f4bfd401ac360dd7e11b7c807e96",
+  "method_results": [
+    {
+      "mean_control_relative_p99_ms": 1.3035503440025675,
+      "mean_control_relative_tps": -0.08322223438938432,
+      "mean_final_hypervolume": 40228.2259358384,
+      "mean_seed_best_throughput_tps": 3003.9302226,
+      "mean_seed_minimum_p99_ms": 26.611783999999982,
+      "method": "random",
+      "seed_count": 5,
+      "valid_observations": 150
+    },
+    {
+      "mean_control_relative_p99_ms": 1.3639265245581302,
+      "mean_control_relative_tps": -0.07413458392359276,
+      "mean_final_hypervolume": 40426.236562044825,
+      "mean_seed_best_throughput_tps": 3049.6244500000003,
+      "mean_seed_minimum_p99_ms": 26.737245999999992,
+      "method": "sobol",
+      "seed_count": 5,
+      "valid_observations": 150
+    },
+    {
+      "mean_control_relative_p99_ms": -1.3951786762625684,
+      "mean_control_relative_tps": -0.002669874342921831,
+      "mean_final_hypervolume": 43053.62545344142,
+      "mean_seed_best_throughput_tps": 3059.5359254000005,
+      "mean_seed_minimum_p99_ms": 25.925818000000014,
+      "method": "bo_qlognei_throughput",
+      "seed_count": 5,
+      "valid_observations": 150
+    },
+    {
+      "mean_control_relative_p99_ms": -1.5303071659721619,
+      "mean_control_relative_tps": -0.002718723116190781,
+      "mean_final_hypervolume": 43343.385697186706,
+      "mean_seed_best_throughput_tps": 3064.2301998000003,
+      "mean_seed_minimum_p99_ms": 25.851904,
+      "method": "bo_qlognparego_multiobjective",
+      "seed_count": 5,
+      "valid_observations": 150
+    },
+    {
+      "mean_control_relative_p99_ms": -1.2321170913509514,
+      "mean_control_relative_tps": -0.009455820906321492,
+      "mean_final_hypervolume": 42322.653469767014,
+      "mean_seed_best_throughput_tps": 3053.6929338,
+      "mean_seed_minimum_p99_ms": 26.1378,
+      "method": "bo_qlognehvi_multiobjective",
+      "seed_count": 5,
+      "valid_observations": 150
+    }
+  ],
+  "phase_b_promotions": {
+    "False": 1,
+    "None": 5,
+    "True": 29
+  },
+  "phase_b_statuses": {
+    "COMPLETED": 35
+  },
+  "physical_candidates": 630,
+  "physical_controls": 25,
+  "primary_attempt_statuses": {
+    "COMPLETED": 655,
+    "INFRASTRUCTURE_FAILED": 2
+  },
+  "primary_failure_types": {
+    "DATASET_RESTORE_FAILED": 1,
+    "HOST_POWER_INTERRUPTION": 1
+  },
+  "primary_runs": 655,
+  "publication_status": "USE_WITH_D072_SAFETY_ERRATUM",
+  "report_index_file_sha256": "97a37d469ca515a4fb4889f6548c8c42ff33b85b1a41d6504dc2e4b551747fd2",
+  "report_rerender_byte_identical": true,
+  "reproduction_output": "C:\\Users\\zawar\\OneDrive\\Documents\\CHARM-DB\\artifacts\\reports\\d072-closeout\\report-final-five-seed",
+  "restore_soak_statuses": {
+    "FAILED": 1,
+    "PASSED": 1
+  },
+  "safety_accounting_correction": [
+    {
+      "additional_attempts": 2,
+      "attribution": "physical",
+      "completed_attempts": 655,
+      "retained_failed_attempts": 2,
+      "scope": "ALL_PHYSICAL",
+      "slots": 655,
+      "slots_retried": 2,
+      "total_attempts_including_first": 657
+    },
+    {
+      "additional_attempts": 2,
+      "attribution": "shared BO rows attributed to each BO method; do not sum methods",
+      "completed_attempts": 150,
+      "retained_failed_attempts": 2,
+      "scope": "bo_qlognehvi_multiobjective",
+      "slots": 150,
+      "slots_retried": 2,
+      "total_attempts_including_first": 152
+    },
+    {
+      "additional_attempts": 2,
+      "attribution": "shared BO rows attributed to each BO method; do not sum methods",
+      "completed_attempts": 150,
+      "retained_failed_attempts": 2,
+      "scope": "bo_qlognei_throughput",
+      "slots": 150,
+      "slots_retried": 2,
+      "total_attempts_including_first": 152
+    },
+    {
+      "additional_attempts": 2,
+      "attribution": "shared BO rows attributed to each BO method; do not sum methods",
+      "completed_attempts": 150,
+      "retained_failed_attempts": 2,
+      "scope": "bo_qlognparego_multiobjective",
+      "slots": 150,
+      "slots_retried": 2,
+      "total_attempts_including_first": 152
+    },
+    {
+      "additional_attempts": 0,
+      "attribution": "shared BO rows attributed to each BO method; do not sum methods",
+      "completed_attempts": 25,
+      "retained_failed_attempts": 0,
+      "scope": "postgresql_default",
+      "slots": 25,
+      "slots_retried": 0,
+      "total_attempts_including_first": 25
+    },
+    {
+      "additional_attempts": 0,
+      "attribution": "shared BO rows attributed to each BO method; do not sum methods",
+      "completed_attempts": 150,
+      "retained_failed_attempts": 0,
+      "scope": "random",
+      "slots": 150,
+      "slots_retried": 0,
+      "total_attempts_including_first": 150
+    },
+    {
+      "additional_attempts": 0,
+      "attribution": "shared BO rows attributed to each BO method; do not sum methods",
+      "completed_attempts": 150,
+      "retained_failed_attempts": 0,
+      "scope": "sobol",
+      "slots": 150,
+      "slots_retried": 0,
+      "total_attempts_including_first": 150
+    }
+  ],
+  "scope": "Offline integrity, ledger accounting, and deterministic report reproduction; not live target or clean-machine reproduction",
+  "source_root": "C:\\CHARMDB-ARTIFACTS\\v2",
+  "status": "PASS",
+  "table_row_counts": {
+    "default-controls": 25,
+    "default-drift": 5,
+    "method-outcomes": 5,
+    "pairwise-contrasts": 50,
+    "pareto-front": 8,
+    "safety-and-failures": 6,
+    "seed-level-statistics": 25,
+    "seed-method-outcomes": 25,
+    "slot-trajectories": 750
+  },
+  "valid_svg_count": 6,
+  "verified_bytes": 60121496447,
+  "verified_files": 5457
+}

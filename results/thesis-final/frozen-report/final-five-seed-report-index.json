@@ -1,0 +1,126 @@
+{
+  "context": {
+    "analysis_sha256": "769f5a0eabdebe272a0a8ae4b7578fd54f72d4a95cd53822e1cb993466a36fb2",
+    "benchmark_profile_id": "scale500-c32-w600-f3-600-v1",
+    "evidence_role": "PRIMARY",
+    "index_filename": "final-five-seed-report-index.json",
+    "report_filename": "final-five-seed-report.md",
+    "report_kind": "thesis-protocol-v2-primary-final-five-seed",
+    "source_provenance": {
+      "wave_a_analysis_sha256": "fa6263830e5081a64943c1057083450076a32279a191bb889dc66944cbda8f21",
+      "wave_a_campaign_id": "b0619879-c807-4ee3-859e-2c2dbec9934e",
+      "wave_b_analysis_sha256": "c2486ee794d323af9a033d811e89329582469583980340b9bdbe15fa6db78ebb",
+      "wave_b_campaign_id": "8d95edea-81e7-41eb-ba81-0997008cf4a8"
+    }
+  },
+  "deterministic": true,
+  "evidence_role": "PRIMARY",
+  "figures": [
+    "figure-best-throughput-by-slot.svg",
+    "figure-default-drift-by-position.svg",
+    "figure-hypervolume-by-slot.svg",
+    "figure-minimum-p99-by-slot.svg",
+    "figure-pareto-tps-vs-p99.svg",
+    "figure-safety-outcomes-by-method.svg"
+  ],
+  "files": [
+    {
+      "bytes": 14921,
+      "path": "final-five-seed-report.md",
+      "sha256": "32b54f426ab0b7beb73ce888e2d4f0be8c38f09768505f6446256fd5f95eb238"
+    },
+    {
+      "bytes": 1427,
+      "path": "tables/default-controls.csv",
+      "sha256": "03f3db9d91b33dc2b79b0cbebb9ce3aa5394ce7d33fb9e5f3a792d374bf96bc7"
+    },
+    {
+      "bytes": 550,
+      "path": "tables/default-drift.csv",
+      "sha256": "ea70f283d54d939dfcd57bf84895a27a2f0db46c8f1962e9042ddfcbd9f0d9d0"
+    },
+    {
+      "bytes": 1051,
+      "path": "tables/method-outcomes.csv",
+      "sha256": "726181c011641438a2630216201dbb66dc152dc265ede9653efe9b2ea297133c"
+    },
+    {
+      "bytes": 8134,
+      "path": "tables/pairwise-contrasts.csv",
+      "sha256": "df5459b9507c74153d9f90d67df1d77a069738d79cfb5306cc3dd9af8c8db7fe"
+    },
+    {
+      "bytes": 3151,
+      "path": "tables/pareto-front.csv",
+      "sha256": "06c4813456ee7910097dae89e9e2e1e2de64c97efc0a8e7483b6dc1d92ff2720"
+    },
+    {
+      "bytes": 475,
+      "path": "tables/safety-and-failures.csv",
+      "sha256": "d1674835b8515c676f7357f0f72d39c9c50710b9731a062246849026ff223f91"
+    },
+    {
+      "bytes": 4576,
+      "path": "tables/seed-level-statistics.csv",
+      "sha256": "65d6aeb6e7f020605a82fe48a3a359789c7021bc9ceefdf2b3d25765d20688d6"
+    },
+    {
+      "bytes": 3370,
+      "path": "tables/seed-method-outcomes.csv",
+      "sha256": "325b501acbf9dd8f4fb3051e67405e4427169daa4e3ccb9be8f24eea933c7bbb"
+    },
+    {
+      "bytes": 97018,
+      "path": "tables/slot-trajectories.csv",
+      "sha256": "7a6977c273ee0a5ea5159dec696d88ffcc462520819274c3d0a95c546d4b5aa5"
+    },
+    {
+      "bytes": 21794,
+      "path": "figures/figure-best-throughput-by-slot.svg",
+      "sha256": "a2d1b045eb60e24c3a6441be00f8012589025c71efb72133c4563bc081f17cb9"
+    },
+    {
+      "bytes": 9860,
+      "path": "figures/figure-default-drift-by-position.svg",
+      "sha256": "6aaf9654eb685cd3b9242e5768920be2b0f3f10361890eac076e2a8eb58ca727"
+    },
+    {
+      "bytes": 21765,
+      "path": "figures/figure-hypervolume-by-slot.svg",
+      "sha256": "85ff6c70f3f224b09fb7d3b0e10eb25d7815436b451c0fea4be96082df7a580e"
+    },
+    {
+      "bytes": 21993,
+      "path": "figures/figure-minimum-p99-by-slot.svg",
+      "sha256": "82c02738ae7bbe87f2810acd8b8be5923a9678a99585123522cf984cca211911"
+    },
+    {
+      "bytes": 81642,
+      "path": "figures/figure-pareto-tps-vs-p99.svg",
+      "sha256": "167431f53331db51fe4d69568d92e5ac23309d0f0d8e4c5e85f3c0d10f805192"
+    },
+    {
+      "bytes": 4862,
+      "path": "figures/figure-safety-outcomes-by-method.svg",
+      "sha256": "b82f5979bd94e7dd45d002f1ba0ea4373f693891acff76d4466f0908e12a79ef"
+    }
+  ],
+  "payload_sha256": "5776d42c71392cf3b6ecf38df3602381a9e736a9ce8d5c128ec5770bf1e02634",
+  "payload_sha256_semantics": "canonical JSON hash of the rendered tables, not a file hash",
+  "reference_point": [
+    0.0,
+    -40.0
+  ],
+  "report_kind": "thesis-protocol-v2-primary-final-five-seed",
+  "table_row_counts": {
+    "default-controls": 25,
+    "default-drift": 5,
+    "method-outcomes": 5,
+    "pairwise-contrasts": 50,
+    "pareto-front": 8,
+    "safety-and-failures": 6,
+    "seed-level-statistics": 25,
+    "seed-method-outcomes": 25,
+    "slot-trajectories": 750
+  }
+}

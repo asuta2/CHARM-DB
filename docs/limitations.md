@@ -1,0 +1,7 @@
+# Limits of the recorded result
+
+The final primary result is `COMPLETE_WITH_DRIFT_FLAGS`; two seed blocks have disclosed default drift. The five-seed exact two-sided sign-flip test has an unadjusted p-value floor of 0.0625, so directional seed values and practical effects carry more weight than nominal significance. Throughput, p99, and derived hypervolume endpoints are related rather than independent confirmations.
+
+No learned feasibility constraint had calibration support, so primary BO uses common hard safety gates without a learned constraint or p99 SLO. The comparison is eight-knob tuning on one workload/environment. It does not validate learned-risk calibration, drift adaptation, transfer, cross-workload ranking, index coordination, or the historical 168-arm program. Secondary Phase B is a single-seed bounded demonstration and lacks a rejected-candidate F3 counterfactual. F4 is repeated finalist confirmation, not broad generalization.
+
+The frozen report's safety table and figure contain retry-count and shared-initialization attribution errors. Use the [D072 correction](../results/thesis-final/safety-accounting-erratum.md): 655 physical slots, 657 attempts, two failed pre-completion attempts, and two retried slots. This changes presentation only, not measurements, endpoint estimates, or the champion. Manuscript approval and clean-machine replication remain separate work.

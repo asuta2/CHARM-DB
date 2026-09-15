@@ -30,6 +30,8 @@ __pycache__/
 .pyright/
 .ipynb_checkpoints/
 /.pytest-tmp-*/
+/docs/generated/
+/docs/render-tmp/
 
 # Coverage, test, and profiling output
 .coverage
@@ -48,8 +50,8 @@ dist/
 wheels/
 
 # Generated benchmark and experiment artifacts
-# Keep only empty directory placeholders; raw measurements, reports, database
-# snapshots, manifests, and test/operator runs can be regenerated locally.
+# Runtime measurements, snapshots, and reports may be irreplaceable evidence.
+# Keep them outside Git; curated authenticated publication copies live in results/.
 artifacts/*
 !artifacts/raw/
 !artifacts/reports/

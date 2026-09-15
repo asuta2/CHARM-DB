@@ -53,7 +53,7 @@ from charmdb.restore.preflight import (
 from charmdb.worker import (
     control_campaign,
     create_campaign,
-    create_v2_tuned_benchmark_trial,
+    create_tuned_benchmark_trial,
     run_once,
 )
 
@@ -1247,7 +1247,7 @@ def run_screening_recovery_next(
         if planned["evaluation_kind"] == "DEFAULT_CONTROL"
         else "SCREENING_CANDIDATE"
     )
-    trial_id = create_v2_tuned_benchmark_trial(
+    trial_id = create_tuned_benchmark_trial(
         settings,
         campaign_id,
         uuid.UUID(str(block["preflight_id"])),

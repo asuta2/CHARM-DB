@@ -1,0 +1,9 @@
+# Reproducibility and evidence
+
+The primary result uses five frozen seed blocks and 30 logical candidate slots per method per seed, plus interleaved PostgreSQL-default controls. Twelve Bayesian initialization candidates are physically shared within each seed; each Bayesian method attributes them once, while physical counts never triple-count them. The profile is scale 500, concurrency 32, four threads, 600-second warm-up and 600-second F3 measurement, with candidate-level restoration. The registered fixed hypervolume reference is `(0, -40)` in `(TPS, -p99 ms)`.
+
+Frozen manifests and preregistration are in [`experiments/thesis`](../experiments/thesis); [`frozen-sha256.json`](../experiments/thesis/frozen-sha256.json) records their byte hashes. Historic logical identifiers are preserved. `make manifest-validate` checks schema/readiness. Two current manifests are intentionally blocked: the retired temporal stage and `apply-best`'s embedded authorization flag.
+
+The immutable 17-file final report, hash index, D072 correction, and publication figures are in [`results/thesis-final`](../results/thesis-final). Original source evidence is in the configured artifact root and control database, not this Git copy. D072 audited 5,457 evidence files (60,121,496,447 bytes) by SHA-256 and rerendered the final report byte-identically on the recorded host. D073 produced a local same-disk source/evidence/control archive; this does not establish off-host backup or clean-machine reproduction. The [provenance records](../experiments/thesis/provenance) carry audit and backup receipts.
+
+`source_tree_sha256` remains the historic algorithm for existing evidence. `source_inventory_sha256_v2` is the new repository inventory hash for future runs and includes frozen inputs while excluding generated caches. Neither rewrites archived provenance. Do not run migrations or a second orchestrator while a long campaign is active.

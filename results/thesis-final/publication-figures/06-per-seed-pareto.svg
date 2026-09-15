@@ -1,0 +1,174 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1120" viewBox="0 0 1200 1120" role="img">
+<title>Per-seed Pareto alternatives and changing frontier ownership</title>
+<style>text{font-family:Arial,sans-serif;fill:#202630}</style>
+<rect width="100%" height="100%" fill="white"/>
+<text x="40.00" y="32.00" font-size="22" text-anchor="start">Per-seed Pareto alternatives and changing frontier ownership</text>
+<circle cx="40.00" cy="65.00" r="4" fill="#4c72b0"><title>#4c72b0</title></circle>
+<text x="52.00" y="69.00" font-size="12" text-anchor="start">Random</text>
+<circle cx="260.00" cy="65.00" r="4" fill="#dd8452"><title>#dd8452</title></circle>
+<text x="272.00" y="69.00" font-size="12" text-anchor="start">Sobol</text>
+<circle cx="480.00" cy="65.00" r="4" fill="#55a868"><title>#55a868</title></circle>
+<text x="492.00" y="69.00" font-size="12" text-anchor="start">qLogNEI</text>
+<circle cx="700.00" cy="65.00" r="4" fill="#c44e52"><title>#c44e52</title></circle>
+<text x="712.00" y="69.00" font-size="12" text-anchor="start">qLogNParEGO</text>
+<circle cx="920.00" cy="65.00" r="4" fill="#8172b3"><title>#8172b3</title></circle>
+<text x="932.00" y="69.00" font-size="12" text-anchor="start">qLogNEHVI</text>
+<text x="95.00" y="113.00" font-size="16" text-anchor="start">Seed 88408573: 3 frontier points</text>
+<line x1="95.00" y1="345.00" x2="555.00" y2="345.00" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="86.00" y="349.00" font-size="11" text-anchor="end">25.3</text>
+<line x1="95.00" y1="292.50" x2="555.00" y2="292.50" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="86.00" y="296.50" font-size="11" text-anchor="end">25.9</text>
+<line x1="95.00" y1="240.00" x2="555.00" y2="240.00" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="86.00" y="244.00" font-size="11" text-anchor="end">26.5</text>
+<line x1="95.00" y1="187.50" x2="555.00" y2="187.50" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="86.00" y="191.50" font-size="11" text-anchor="end">27.1</text>
+<line x1="95.00" y1="135.00" x2="555.00" y2="135.00" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="86.00" y="139.00" font-size="11" text-anchor="end">27.7</text>
+<line x1="95.00" y1="135.00" x2="95.00" y2="345.00" stroke="#cbd0d5" stroke-width="1" stroke-dasharray=""/>
+<text x="95.00" y="365.00" font-size="11" text-anchor="middle">3,012</text>
+<text x="210.00" y="365.00" font-size="11" text-anchor="middle">3,040</text>
+<text x="325.00" y="365.00" font-size="11" text-anchor="middle">3,068</text>
+<text x="440.00" y="365.00" font-size="11" text-anchor="middle">3,096</text>
+<text x="555.00" y="365.00" font-size="11" text-anchor="middle">3,125</text>
+<text x="325.00" y="394.00" font-size="13" text-anchor="middle">Throughput (TPS)</text>
+<g transform="rotate(-90 30 240.0)"><text x="30.00" y="240.00" font-size="12" text-anchor="middle">p99 latency (ms), lower is better</text></g>
+<polyline points="139.52,285.12 223.05,275.33 334.84,155.32" fill="none" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray=""/>
+<circle cx="139.52" cy="285.12" r="5" fill="#c44e52"><title>#c44e52</title></circle>
+<line x1="139.52" y1="285.12" x2="146.52" y2="271.12" stroke="#777777" stroke-width="0.6" stroke-dasharray=""/>
+<text x="146.52" y="275.12" font-size="11" text-anchor="start">P1.1</text>
+<circle cx="223.05" cy="275.33" r="5" fill="#c44e52"><title>#c44e52</title></circle>
+<line x1="223.05" y1="275.33" x2="230.05" y2="261.33" stroke="#777777" stroke-width="0.6" stroke-dasharray=""/>
+<text x="230.05" y="265.33" font-size="11" text-anchor="start">P1.2</text>
+<circle cx="334.84" cy="155.32" r="5" fill="#dd8452"><title>#dd8452</title></circle>
+<line x1="334.84" y1="155.32" x2="341.84" y2="141.32" stroke="#777777" stroke-width="0.6" stroke-dasharray=""/>
+<text x="341.84" y="145.32" font-size="11" text-anchor="start">P1.3</text>
+<text x="685.00" y="113.00" font-size="16" text-anchor="start">Seed 642754166: 4 frontier points</text>
+<line x1="685.00" y1="345.00" x2="1145.00" y2="345.00" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="676.00" y="349.00" font-size="11" text-anchor="end">25.3</text>
+<line x1="685.00" y1="292.50" x2="1145.00" y2="292.50" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="676.00" y="296.50" font-size="11" text-anchor="end">25.9</text>
+<line x1="685.00" y1="240.00" x2="1145.00" y2="240.00" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="676.00" y="244.00" font-size="11" text-anchor="end">26.5</text>
+<line x1="685.00" y1="187.50" x2="1145.00" y2="187.50" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="676.00" y="191.50" font-size="11" text-anchor="end">27.1</text>
+<line x1="685.00" y1="135.00" x2="1145.00" y2="135.00" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="676.00" y="139.00" font-size="11" text-anchor="end">27.7</text>
+<line x1="685.00" y1="135.00" x2="685.00" y2="345.00" stroke="#cbd0d5" stroke-width="1" stroke-dasharray=""/>
+<text x="685.00" y="365.00" font-size="11" text-anchor="middle">3,012</text>
+<text x="800.00" y="365.00" font-size="11" text-anchor="middle">3,040</text>
+<text x="915.00" y="365.00" font-size="11" text-anchor="middle">3,068</text>
+<text x="1030.00" y="365.00" font-size="11" text-anchor="middle">3,096</text>
+<text x="1145.00" y="365.00" font-size="11" text-anchor="middle">3,125</text>
+<text x="915.00" y="394.00" font-size="13" text-anchor="middle">Throughput (TPS)</text>
+<g transform="rotate(-90 620 240.0)"><text x="620.00" y="240.00" font-size="12" text-anchor="middle">p99 latency (ms), lower is better</text></g>
+<polyline points="740.72,310.73 842.63,305.18 865.54,267.85 908.51,227.41" fill="none" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray=""/>
+<circle cx="740.72" cy="310.73" r="5" fill="#c44e52"><title>#c44e52</title></circle>
+<line x1="740.72" y1="310.73" x2="747.72" y2="296.73" stroke="#777777" stroke-width="0.6" stroke-dasharray=""/>
+<text x="747.72" y="300.73" font-size="11" text-anchor="start">P2.1</text>
+<circle cx="842.63" cy="305.18" r="5" fill="#8172b3"><title>#8172b3</title></circle>
+<line x1="842.63" y1="305.18" x2="849.63" y2="291.18" stroke="#777777" stroke-width="0.6" stroke-dasharray=""/>
+<text x="849.63" y="295.18" font-size="11" text-anchor="start">P2.2</text>
+<circle cx="865.54" cy="267.85" r="5" fill="#55a868"><title>#55a868</title></circle>
+<line x1="865.54" y1="267.85" x2="872.54" y2="253.85" stroke="#777777" stroke-width="0.6" stroke-dasharray=""/>
+<text x="872.54" y="257.85" font-size="11" text-anchor="start">P2.3</text>
+<circle cx="908.51" cy="227.41" r="5" fill="#8172b3"><title>#8172b3</title></circle>
+<line x1="908.51" y1="227.41" x2="915.51" y2="213.41" stroke="#777777" stroke-width="0.6" stroke-dasharray=""/>
+<text x="915.51" y="217.41" font-size="11" text-anchor="start">P2.4</text>
+<text x="95.00" y="443.00" font-size="16" text-anchor="start">Seed 740267717: 1 frontier points</text>
+<line x1="95.00" y1="675.00" x2="555.00" y2="675.00" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="86.00" y="679.00" font-size="11" text-anchor="end">25.3</text>
+<line x1="95.00" y1="622.50" x2="555.00" y2="622.50" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="86.00" y="626.50" font-size="11" text-anchor="end">25.9</text>
+<line x1="95.00" y1="570.00" x2="555.00" y2="570.00" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="86.00" y="574.00" font-size="11" text-anchor="end">26.5</text>
+<line x1="95.00" y1="517.50" x2="555.00" y2="517.50" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="86.00" y="521.50" font-size="11" text-anchor="end">27.1</text>
+<line x1="95.00" y1="465.00" x2="555.00" y2="465.00" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="86.00" y="469.00" font-size="11" text-anchor="end">27.7</text>
+<line x1="95.00" y1="465.00" x2="95.00" y2="675.00" stroke="#cbd0d5" stroke-width="1" stroke-dasharray=""/>
+<text x="95.00" y="695.00" font-size="11" text-anchor="middle">3,012</text>
+<text x="210.00" y="695.00" font-size="11" text-anchor="middle">3,040</text>
+<text x="325.00" y="695.00" font-size="11" text-anchor="middle">3,068</text>
+<text x="440.00" y="695.00" font-size="11" text-anchor="middle">3,096</text>
+<text x="555.00" y="695.00" font-size="11" text-anchor="middle">3,125</text>
+<text x="325.00" y="724.00" font-size="13" text-anchor="middle">Throughput (TPS)</text>
+<g transform="rotate(-90 30 570.0)"><text x="30.00" y="570.00" font-size="12" text-anchor="middle">p99 latency (ms), lower is better</text></g>
+<polyline points="247.29,643.91" fill="none" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray=""/>
+<circle cx="247.29" cy="643.91" r="5" fill="#c44e52"><title>#c44e52</title></circle>
+<line x1="247.29" y1="643.91" x2="254.29" y2="629.91" stroke="#777777" stroke-width="0.6" stroke-dasharray=""/>
+<text x="254.29" y="633.91" font-size="11" text-anchor="start">P3.1</text>
+<text x="685.00" y="443.00" font-size="16" text-anchor="start">Seed 1418705027: 6 frontier points</text>
+<line x1="685.00" y1="675.00" x2="1145.00" y2="675.00" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="676.00" y="679.00" font-size="11" text-anchor="end">25.3</text>
+<line x1="685.00" y1="622.50" x2="1145.00" y2="622.50" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="676.00" y="626.50" font-size="11" text-anchor="end">25.9</text>
+<line x1="685.00" y1="570.00" x2="1145.00" y2="570.00" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="676.00" y="574.00" font-size="11" text-anchor="end">26.5</text>
+<line x1="685.00" y1="517.50" x2="1145.00" y2="517.50" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="676.00" y="521.50" font-size="11" text-anchor="end">27.1</text>
+<line x1="685.00" y1="465.00" x2="1145.00" y2="465.00" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="676.00" y="469.00" font-size="11" text-anchor="end">27.7</text>
+<line x1="685.00" y1="465.00" x2="685.00" y2="675.00" stroke="#cbd0d5" stroke-width="1" stroke-dasharray=""/>
+<text x="685.00" y="695.00" font-size="11" text-anchor="middle">3,012</text>
+<text x="800.00" y="695.00" font-size="11" text-anchor="middle">3,040</text>
+<text x="915.00" y="695.00" font-size="11" text-anchor="middle">3,068</text>
+<text x="1030.00" y="695.00" font-size="11" text-anchor="middle">3,096</text>
+<text x="1145.00" y="695.00" font-size="11" text-anchor="middle">3,125</text>
+<text x="915.00" y="724.00" font-size="13" text-anchor="middle">Throughput (TPS)</text>
+<g transform="rotate(-90 620 570.0)"><text x="620.00" y="570.00" font-size="12" text-anchor="middle">p99 latency (ms), lower is better</text></g>
+<polyline points="842.18,638.82 865.99,638.13 869.64,632.23 912.65,616.78 1014.00,604.55 1100.48,595.26" fill="none" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray=""/>
+<circle cx="842.18" cy="638.82" r="5" fill="#8172b3"><title>#8172b3</title></circle>
+<line x1="842.18" y1="638.82" x2="849.18" y2="624.82" stroke="#777777" stroke-width="0.6" stroke-dasharray=""/>
+<text x="849.18" y="628.82" font-size="11" text-anchor="start">P4.1</text>
+<circle cx="865.99" cy="638.13" r="5" fill="#55a868"><title>#55a868</title></circle>
+<line x1="865.99" y1="638.13" x2="872.99" y2="654.13" stroke="#777777" stroke-width="0.6" stroke-dasharray=""/>
+<text x="872.99" y="658.13" font-size="11" text-anchor="start">P4.2</text>
+<circle cx="869.64" cy="632.23" r="5" fill="#c44e52"><title>#c44e52</title></circle>
+<line x1="869.64" y1="632.23" x2="832.64" y2="648.23" stroke="#777777" stroke-width="0.6" stroke-dasharray=""/>
+<text x="832.64" y="652.23" font-size="11" text-anchor="start">P4.3</text>
+<circle cx="912.65" cy="616.78" r="5" fill="#8172b3"><title>#8172b3</title></circle>
+<line x1="912.65" y1="616.78" x2="919.65" y2="602.78" stroke="#777777" stroke-width="0.6" stroke-dasharray=""/>
+<text x="919.65" y="606.78" font-size="11" text-anchor="start">P4.4</text>
+<circle cx="1014.00" cy="604.55" r="5" fill="#55a868"><title>#55a868</title></circle>
+<line x1="1014.00" y1="604.55" x2="1021.00" y2="590.55" stroke="#777777" stroke-width="0.6" stroke-dasharray=""/>
+<text x="1021.00" y="594.55" font-size="11" text-anchor="start">P4.5</text>
+<polygon points="1100.48,588.26 1106.48,595.26 1100.48,602.26 1094.48,595.26" fill="#333333"><title>#333333</title></polygon>
+<line x1="1100.48" y1="595.26" x2="1107.48" y2="581.26" stroke="#777777" stroke-width="0.6" stroke-dasharray=""/>
+<text x="1107.48" y="585.26" font-size="11" text-anchor="start">P4.6</text>
+<text x="95.00" y="773.00" font-size="16" text-anchor="start">Seed 1902413987: 3 frontier points</text>
+<line x1="95.00" y1="1005.00" x2="555.00" y2="1005.00" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="86.00" y="1009.00" font-size="11" text-anchor="end">25.3</text>
+<line x1="95.00" y1="952.50" x2="555.00" y2="952.50" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="86.00" y="956.50" font-size="11" text-anchor="end">25.9</text>
+<line x1="95.00" y1="900.00" x2="555.00" y2="900.00" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="86.00" y="904.00" font-size="11" text-anchor="end">26.5</text>
+<line x1="95.00" y1="847.50" x2="555.00" y2="847.50" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="86.00" y="851.50" font-size="11" text-anchor="end">27.1</text>
+<line x1="95.00" y1="795.00" x2="555.00" y2="795.00" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="86.00" y="799.00" font-size="11" text-anchor="end">27.7</text>
+<line x1="95.00" y1="795.00" x2="95.00" y2="1005.00" stroke="#cbd0d5" stroke-width="1" stroke-dasharray=""/>
+<text x="95.00" y="1025.00" font-size="11" text-anchor="middle">3,012</text>
+<text x="210.00" y="1025.00" font-size="11" text-anchor="middle">3,040</text>
+<text x="325.00" y="1025.00" font-size="11" text-anchor="middle">3,068</text>
+<text x="440.00" y="1025.00" font-size="11" text-anchor="middle">3,096</text>
+<text x="555.00" y="1025.00" font-size="11" text-anchor="middle">3,125</text>
+<text x="325.00" y="1054.00" font-size="13" text-anchor="middle">Throughput (TPS)</text>
+<g transform="rotate(-90 30 900.0)"><text x="30.00" y="900.00" font-size="12" text-anchor="middle">p99 latency (ms), lower is better</text></g>
+<polyline points="194.64,984.68 298.82,943.57 325.30,925.29" fill="none" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray=""/>
+<circle cx="194.64" cy="984.68" r="5" fill="#55a868"><title>#55a868</title></circle>
+<line x1="194.64" y1="984.68" x2="201.64" y2="970.68" stroke="#777777" stroke-width="0.6" stroke-dasharray=""/>
+<text x="201.64" y="974.68" font-size="11" text-anchor="start">P5.1</text>
+<circle cx="298.82" cy="943.57" r="5" fill="#c44e52"><title>#c44e52</title></circle>
+<line x1="298.82" y1="943.57" x2="305.82" y2="929.57" stroke="#777777" stroke-width="0.6" stroke-dasharray=""/>
+<text x="305.82" y="933.57" font-size="11" text-anchor="start">P5.2</text>
+<circle cx="325.30" cy="925.29" r="5" fill="#55a868"><title>#55a868</title></circle>
+<line x1="325.30" y1="925.29" x2="332.30" y2="911.29" stroke="#777777" stroke-width="0.6" stroke-dasharray=""/>
+<text x="332.30" y="915.29" font-size="11" text-anchor="start">P5.3</text>
+<text x="700.00" y="855.00" font-size="16" text-anchor="start">Appendix: physical frontiers, separated by seed</text>
+<text x="700.00" y="886.00" font-size="12" text-anchor="start">Shared initialization: one dark diamond, measured once.</text>
+<text x="700.00" y="912.00" font-size="12" text-anchor="start">Point IDs link to the configuration/objective CSV.</text>
+<text x="700.00" y="938.00" font-size="12" text-anchor="start">Common axes; fronts are not pooled across seeds.</text>
+<text x="700.00" y="964.00" font-size="12" text-anchor="start">Segments show observed alternatives, not an interpolated model.</text>
+<text x="40.00" y="1084.00" font-size="12" text-anchor="start">Frontier membership uses raw TPS/p99. It does not remove within-seed drift or establish statistical superiority.</text>
+<text x="40.00" y="1102.00" font-size="12" text-anchor="start">No knee or composite winner is selected. Full normalized configurations and local-control contrasts are in pareto-configurations.csv.</text>
+</svg>

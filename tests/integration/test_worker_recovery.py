@@ -1,6 +1,5 @@
 import os
 import uuid
-from pathlib import Path
 from threading import Event
 
 import pytest
@@ -21,7 +20,7 @@ pytestmark = pytest.mark.integration
 
 
 @pytest.mark.skipif(
-    not (os.getenv("CHARMDB_TARGET_DSN") or Path(".env").exists()),
+    os.getenv("CHARMDB_DISPOSABLE_INTEGRATION") != "1",
     reason="integration environment not configured",
 )
 def test_continuous_worker_drains_then_resumes_campaign() -> None:
@@ -80,7 +79,7 @@ def test_continuous_worker_drains_then_resumes_campaign() -> None:
 
 
 @pytest.mark.skipif(
-    not (os.getenv("CHARMDB_TARGET_DSN") or Path(".env").exists()),
+    os.getenv("CHARMDB_DISPOSABLE_INTEGRATION") != "1",
     reason="integration environment not configured",
 )
 def test_stale_lease_recovery_is_idempotent_and_completes_real_health_workflow() -> None:
@@ -145,7 +144,7 @@ def test_stale_lease_recovery_is_idempotent_and_completes_real_health_workflow()
 
 
 @pytest.mark.skipif(
-    not (os.getenv("CHARMDB_TARGET_DSN") or Path(".env").exists()),
+    os.getenv("CHARMDB_DISPOSABLE_INTEGRATION") != "1",
     reason="integration environment not configured",
 )
 def test_pause_resume_and_emergency_stop_cancel_unstarted_work() -> None:

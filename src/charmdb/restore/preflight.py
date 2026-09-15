@@ -20,7 +20,7 @@ from psycopg.types.json import Jsonb
 from charmdb.config import Settings
 from charmdb.controller import discover_knobs
 from charmdb.db import connect
-from charmdb.provenance import source_tree_sha256
+from charmdb.provenance import source_inventory_sha256_v2, source_tree_sha256
 from charmdb.resources import capture_and_validate_resources
 from charmdb.restore.evidence import assess_f3_measurement_evidence
 
@@ -266,6 +266,7 @@ def _software_versions(settings: Settings) -> dict[str, str]:
     return {
         "charmdb": version("charm-db"),
         "charmdb_source_sha256": source_tree_sha256(),
+        "charmdb_source_inventory_sha256_v2": source_inventory_sha256_v2(),
         "python": platform.python_version(),
         "botorch": version("botorch"),
         "torch": version("torch"),

@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img">
+<title>Finalist confirmation: repeated gains and a latency-first choice</title>
+<style>text{font-family:Arial,sans-serif;fill:#202630}</style>
+<rect width="100%" height="100%" fill="white"/>
+<text x="40.00" y="32.00" font-size="22" text-anchor="start">Finalist confirmation: repeated gains and a latency-first choice</text>
+<circle cx="75.00" cy="70.00" r="4" fill="#0072B2"><title>#0072B2</title></circle>
+<text x="90.00" y="74.00" font-size="13" text-anchor="start">Confirmation block 1</text>
+<polygon points="311.00,66.00 319.00,66.00 319.00,74.00 311.00,74.00" fill="#D55E00"><title>#D55E00</title></polygon>
+<text x="330.00" y="74.00" font-size="13" text-anchor="start">Confirmation block 2</text>
+<polygon points="555.00,64.40 560.20,74.00 549.80,74.00" fill="#009E73"><title>#009E73</title></polygon>
+<text x="570.00" y="74.00" font-size="13" text-anchor="start">Confirmation block 3</text>
+<polygon points="795.00,64.40 799.80,70.00 795.00,75.60 790.20,70.00" fill="#CC79A7"><title>#CC79A7</title></polygon>
+<text x="810.00" y="74.00" font-size="13" text-anchor="start">Confirmation block 4</text>
+<text x="100.00" y="123.00" font-size="16" text-anchor="start">A  Throughput versus matched default</text>
+<line x1="100.00" y1="435.00" x2="555.00" y2="435.00" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="91.00" y="439.00" font-size="11" text-anchor="end">-6.31</text>
+<line x1="100.00" y1="362.50" x2="555.00" y2="362.50" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="91.00" y="366.50" font-size="11" text-anchor="end">-2.93</text>
+<line x1="100.00" y1="290.00" x2="555.00" y2="290.00" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="91.00" y="294.00" font-size="11" text-anchor="end">0.45</text>
+<line x1="100.00" y1="217.50" x2="555.00" y2="217.50" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="91.00" y="221.50" font-size="11" text-anchor="end">3.83</text>
+<line x1="100.00" y1="145.00" x2="555.00" y2="145.00" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="91.00" y="149.00" font-size="11" text-anchor="end">7.21</text>
+<line x1="100.00" y1="145.00" x2="100.00" y2="435.00" stroke="#cbd0d5" stroke-width="1" stroke-dasharray=""/>
+<text x="327.50" y="484.00" font-size="13" text-anchor="middle">Finalist configuration</text>
+<g transform="rotate(-90 35 290.0)"><text x="35.00" y="290.00" font-size="12" text-anchor="middle">TPS difference (%)</text></g>
+<line x1="100.00" y1="299.64" x2="555.00" y2="299.64" stroke="#6b7280" stroke-width="1" stroke-dasharray="4 3"/>
+<line x1="100.00" y1="406.94" x2="555.00" y2="406.94" stroke="#555555" stroke-width="1.5" stroke-dasharray="6 3"/>
+<line x1="139.88" y1="182.26" x2="173.88" y2="182.26" stroke="#111111" stroke-width="3" stroke-dasharray=""/>
+<text x="156.88" y="457.00" font-size="12" text-anchor="middle">T</text>
+<circle cx="146.64" cy="187.99" r="5" fill="#0072B2"><title>#0072B2</title></circle>
+<polygon points="148.46,170.95 158.46,170.95 158.46,180.95 148.46,180.95" fill="#D55E00"><title>#D55E00</title></polygon>
+<polygon points="160.29,176.69 166.79,188.69 153.79,188.69" fill="#009E73"><title>#009E73</title></polygon>
+<polygon points="167.11,174.43 173.11,181.43 167.11,188.43 161.11,181.43" fill="#CC79A7"><title>#CC79A7</title></polygon>
+<line x1="253.62" y1="201.07" x2="287.62" y2="201.07" stroke="#111111" stroke-width="3" stroke-dasharray=""/>
+<text x="270.62" y="457.00" font-size="12" text-anchor="middle">L</text>
+<circle cx="260.39" cy="181.58" r="5" fill="#0072B2"><title>#0072B2</title></circle>
+<polygon points="262.21,195.47 272.21,195.47 272.21,205.47 262.21,205.47" fill="#D55E00"><title>#D55E00</title></polygon>
+<polygon points="274.04,210.08 280.54,222.08 267.54,222.08" fill="#009E73"><title>#009E73</title></polygon>
+<polygon points="280.86,198.15 286.86,205.15 280.86,212.15 274.86,205.15" fill="#CC79A7"><title>#CC79A7</title></polygon>
+<line x1="367.38" y1="186.85" x2="401.38" y2="186.85" stroke="#111111" stroke-width="3" stroke-dasharray=""/>
+<text x="384.38" y="457.00" font-size="12" text-anchor="middle">H</text>
+<circle cx="374.14" cy="199.52" r="5" fill="#0072B2"><title>#0072B2</title></circle>
+<polygon points="375.96,176.20 385.96,176.20 385.96,186.20 375.96,186.20" fill="#D55E00"><title>#D55E00</title></polygon>
+<polygon points="387.79,175.76 394.29,187.76 381.29,187.76" fill="#009E73"><title>#009E73</title></polygon>
+<polygon points="394.61,176.92 400.61,183.92 394.61,190.92 388.61,183.92" fill="#CC79A7"><title>#CC79A7</title></polygon>
+<line x1="481.12" y1="189.81" x2="515.12" y2="189.81" stroke="#111111" stroke-width="3" stroke-dasharray=""/>
+<text x="498.12" y="457.00" font-size="12" text-anchor="middle">E (selected)</text>
+<circle cx="487.89" cy="185.46" r="5" fill="#0072B2"><title>#0072B2</title></circle>
+<polygon points="489.71,197.76 499.71,197.76 499.71,207.76 489.71,207.76" fill="#D55E00"><title>#D55E00</title></polygon>
+<polygon points="501.54,190.95 508.04,202.95 495.04,202.95" fill="#009E73"><title>#009E73</title></polygon>
+<polygon points="508.36,166.06 514.36,173.06 508.36,180.06 502.36,173.06" fill="#CC79A7"><title>#CC79A7</title></polygon>
+<text x="100.00" y="510.00" font-size="12" text-anchor="start">Dashed line: frozen mean gate (-5 %)</text>
+<text x="690.00" y="123.00" font-size="16" text-anchor="start">B  Tail latency versus matched default</text>
+<line x1="690.00" y1="435.00" x2="1145.00" y2="435.00" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="681.00" y="439.00" font-size="11" text-anchor="end">-4.50</text>
+<line x1="690.00" y1="362.50" x2="1145.00" y2="362.50" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="681.00" y="366.50" font-size="11" text-anchor="end">-3.25</text>
+<line x1="690.00" y1="290.00" x2="1145.00" y2="290.00" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="681.00" y="294.00" font-size="11" text-anchor="end">-2.01</text>
+<line x1="690.00" y1="217.50" x2="1145.00" y2="217.50" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="681.00" y="221.50" font-size="11" text-anchor="end">-0.76</text>
+<line x1="690.00" y1="145.00" x2="1145.00" y2="145.00" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="681.00" y="149.00" font-size="11" text-anchor="end">0.48</text>
+<line x1="690.00" y1="145.00" x2="690.00" y2="435.00" stroke="#cbd0d5" stroke-width="1" stroke-dasharray=""/>
+<text x="917.50" y="484.00" font-size="13" text-anchor="middle">Finalist configuration</text>
+<g transform="rotate(-90 625 290.0)"><text x="625.00" y="290.00" font-size="12" text-anchor="middle">p99 difference (ms)</text></g>
+<line x1="690.00" y1="173.06" x2="1145.00" y2="173.06" stroke="#6b7280" stroke-width="1" stroke-dasharray="4 3"/>
+<line x1="690.00" y1="231.28" x2="1145.00" y2="231.28" stroke="#555555" stroke-width="1.5" stroke-dasharray="6 3"/>
+<line x1="729.88" y1="352.70" x2="763.88" y2="352.70" stroke="#111111" stroke-width="3" stroke-dasharray=""/>
+<text x="746.88" y="457.00" font-size="12" text-anchor="middle">T</text>
+<circle cx="736.64" cy="332.89" r="5" fill="#0072B2"><title>#0072B2</title></circle>
+<polygon points="738.46,362.14 748.46,362.14 748.46,372.14 738.46,372.14" fill="#D55E00"><title>#D55E00</title></polygon>
+<polygon points="750.29,352.52 756.79,364.52 743.79,364.52" fill="#009E73"><title>#009E73</title></polygon>
+<polygon points="757.11,344.25 763.11,351.25 757.11,358.25 751.11,351.25" fill="#CC79A7"><title>#CC79A7</title></polygon>
+<line x1="843.62" y1="322.03" x2="877.62" y2="322.03" stroke="#111111" stroke-width="3" stroke-dasharray=""/>
+<text x="860.62" y="457.00" font-size="12" text-anchor="middle">L</text>
+<circle cx="850.39" cy="316.46" r="5" fill="#0072B2"><title>#0072B2</title></circle>
+<polygon points="852.21,337.11 862.21,337.11 862.21,347.11 852.21,347.11" fill="#D55E00"><title>#D55E00</title></polygon>
+<polygon points="864.04,322.12 870.54,334.12 857.54,334.12" fill="#009E73"><title>#009E73</title></polygon>
+<polygon points="870.86,293.43 876.86,300.43 870.86,307.43 864.86,300.43" fill="#CC79A7"><title>#CC79A7</title></polygon>
+<line x1="957.38" y1="321.40" x2="991.38" y2="321.40" stroke="#111111" stroke-width="3" stroke-dasharray=""/>
+<text x="974.38" y="457.00" font-size="12" text-anchor="middle">H</text>
+<circle cx="964.14" cy="254.07" r="5" fill="#0072B2"><title>#0072B2</title></circle>
+<polygon points="965.96,307.29 975.96,307.29 975.96,317.29 965.96,317.29" fill="#D55E00"><title>#D55E00</title></polygon>
+<polygon points="977.79,360.12 984.29,372.12 971.29,372.12" fill="#009E73"><title>#009E73</title></polygon>
+<polygon points="984.61,345.12 990.61,352.12 984.61,359.12 978.61,352.12" fill="#CC79A7"><title>#CC79A7</title></polygon>
+<line x1="1071.12" y1="370.32" x2="1105.12" y2="370.32" stroke="#111111" stroke-width="3" stroke-dasharray=""/>
+<text x="1088.12" y="457.00" font-size="12" text-anchor="middle">E (selected)</text>
+<circle cx="1077.89" cy="336.90" r="5" fill="#0072B2"><title>#0072B2</title></circle>
+<polygon points="1079.71,331.37 1089.71,331.37 1089.71,341.37 1079.71,341.37" fill="#D55E00"><title>#D55E00</title></polygon>
+<polygon points="1091.54,399.94 1098.04,411.94 1085.04,411.94" fill="#009E73"><title>#009E73</title></polygon>
+<polygon points="1098.36,394.08 1104.36,401.08 1098.36,408.08 1092.36,401.08" fill="#CC79A7"><title>#CC79A7</title></polygon>
+<text x="690.00" y="510.00" font-size="12" text-anchor="start">Dashed line: frozen mean gate (-1 ms)</text>
+<text x="40.00" y="566.00" font-size="12" text-anchor="start">Four matched blocks, not five primary seeds. Black bars are means; all 16 finalist observations are shown.</text>
+<text x="40.00" y="584.00" font-size="12" text-anchor="start">E was selected by lowest mean p99 among eligible finalists; it is not the throughput winner. All finalists passed all frozen gates.</text>
+<text x="40.00" y="602.00" font-size="12" text-anchor="start">Other gates require valid repetitions and mean TPS within 95% of the highest finalist mean. No optimizer-family superiority is inferred.</text>
+</svg>

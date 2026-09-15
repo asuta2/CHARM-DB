@@ -29,7 +29,7 @@ from charmdb.restore.preflight import _target_safety
 from charmdb.worker import (
     control_campaign,
     create_campaign,
-    create_v2_tuned_benchmark_trial,
+    create_tuned_benchmark_trial,
     run_once,
 )
 
@@ -804,7 +804,7 @@ def _execute_slot(
             if cur.rowcount != 1:
                 raise RuntimeError("Phase B causal promotion baseline changed across retry")
             conn.commit()
-    trial_id = create_v2_tuned_benchmark_trial(
+    trial_id = create_tuned_benchmark_trial(
         settings,
         campaign_id,
         FROZEN_PREFLIGHT_ID,

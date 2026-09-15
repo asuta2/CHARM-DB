@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 
 import pytest
 
@@ -11,7 +10,7 @@ pytestmark = pytest.mark.integration
 
 
 @pytest.mark.skipif(
-    not (os.getenv("CHARMDB_TARGET_DSN") or Path(".env").exists()),
+    os.getenv("CHARMDB_DISPOSABLE_INTEGRATION") != "1",
     reason="integration environment not configured",
 )
 def test_control_and_target_are_separate_and_ready() -> None:
@@ -29,7 +28,7 @@ def test_control_and_target_are_separate_and_ready() -> None:
 
 
 @pytest.mark.skipif(
-    not (os.getenv("CHARMDB_TARGET_DSN") or Path(".env").exists()),
+    os.getenv("CHARMDB_DISPOSABLE_INTEGRATION") != "1",
     reason="integration environment not configured",
 )
 def test_failed_verification_automatically_rolls_back(monkeypatch: pytest.MonkeyPatch) -> None:

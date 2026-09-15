@@ -30,7 +30,7 @@ from charmdb.statistics import descriptive_summary
 from charmdb.worker import (
     control_campaign,
     create_campaign,
-    create_v2_tuned_benchmark_trial,
+    create_tuned_benchmark_trial,
     run_once,
 )
 
@@ -454,7 +454,7 @@ def _execute_slot(
 ) -> F4Step:
     run_id = uuid.UUID(str(row["f4_run_id"]))
     attempt_number = int(row["infrastructure_attempts"]) + 1
-    trial_id = create_v2_tuned_benchmark_trial(
+    trial_id = create_tuned_benchmark_trial(
         settings,
         campaign_id,
         FROZEN_PREFLIGHT_ID,

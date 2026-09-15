@@ -15,7 +15,7 @@ from charmdb.protocol import load_manifest
 from charmdb.worker import (
     control_campaign,
     create_campaign,
-    create_v2_tuned_benchmark_trial,
+    create_tuned_benchmark_trial,
     run_once,
 )
 
@@ -320,7 +320,7 @@ def run_phase2_next(
 
     planned = dict(planned_row)
     configuration_id = uuid.UUID(str(planned["configuration_id"]))
-    trial_id = create_v2_tuned_benchmark_trial(
+    trial_id = create_tuned_benchmark_trial(
         settings,
         campaign_id,
         preflight_id,

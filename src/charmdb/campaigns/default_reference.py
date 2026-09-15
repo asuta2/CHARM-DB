@@ -19,7 +19,7 @@ from charmdb.restore.preflight import _target_safety
 from charmdb.worker import (
     control_campaign,
     create_campaign,
-    create_v2_tuned_benchmark_trial,
+    create_tuned_benchmark_trial,
     run_once,
 )
 
@@ -427,7 +427,7 @@ def run_default_reference_next(
         )
     planned = dict(planned_row)
     run_id = uuid.UUID(str(planned["run_id"]))
-    trial_id = create_v2_tuned_benchmark_trial(
+    trial_id = create_tuned_benchmark_trial(
         settings,
         campaign_id,
         uuid.UUID(str(block["preflight_id"])),

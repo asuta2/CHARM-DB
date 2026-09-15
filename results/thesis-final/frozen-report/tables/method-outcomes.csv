@@ -1,0 +1,6 @@
+method,label,seeds,logical_slots,valid_candidate_observations,candidate_failed_slots,completed_but_invalid_slots,infrastructure_exhausted_slots,retained_infrastructure_attempts,mean_final_hypervolume,mean_seed_best_throughput_tps,mean_seed_minimum_p99_ms,mean_control_relative_tps,mean_control_relative_p99_ms
+random,Random,5,150,150,0,0,0,150,40228.2259358384,3003.9302226,26.611783999999982,-0.08322223438938432,1.3035503440025675
+sobol,Sobol,5,150,150,0,0,0,150,40426.236562044825,3049.6244500000003,26.737245999999992,-0.07413458392359276,1.3639265245581302
+bo_qlognei_throughput,qLogNEI (throughput),5,150,150,0,0,0,152,43053.62545344142,3059.5359254000005,25.925818000000014,-0.002669874342921831,-1.3951786762625684
+bo_qlognparego_multiobjective,qLogNParEGO (multi-objective),5,150,150,0,0,0,152,43343.385697186706,3064.2301998000003,25.851904,-0.002718723116190781,-1.5303071659721619
+bo_qlognehvi_multiobjective,qLogNEHVI (multi-objective),5,150,150,0,0,0,152,42322.653469767014,3053.6929338,26.1378,-0.009455820906321492,-1.2321170913509514

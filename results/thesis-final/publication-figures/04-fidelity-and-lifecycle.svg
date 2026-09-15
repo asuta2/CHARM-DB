@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="825" viewBox="0 0 1200 825" role="img">
+<title>Predictive prefixes do not imply large lifecycle savings</title>
+<style>text{font-family:Arial,sans-serif;fill:#202630}</style>
+<rect width="100%" height="100%" fill="white"/>
+<text x="40.00" y="32.00" font-size="22" text-anchor="start">Predictive prefixes do not imply large lifecycle savings</text>
+<text x="100.00" y="118.00" font-size="16" text-anchor="start">A  Retrospective ordering: three seeds</text>
+<line x1="100.00" y1="380.00" x2="540.00" y2="380.00" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="91.00" y="384.00" font-size="11" text-anchor="end">0.75</text>
+<line x1="100.00" y1="320.00" x2="540.00" y2="320.00" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="91.00" y="324.00" font-size="11" text-anchor="end">0.81</text>
+<line x1="100.00" y1="260.00" x2="540.00" y2="260.00" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="91.00" y="264.00" font-size="11" text-anchor="end">0.88</text>
+<line x1="100.00" y1="200.00" x2="540.00" y2="200.00" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="91.00" y="204.00" font-size="11" text-anchor="end">0.94</text>
+<line x1="100.00" y1="140.00" x2="540.00" y2="140.00" stroke="#e5e7eb" stroke-width="1" stroke-dasharray=""/>
+<text x="91.00" y="144.00" font-size="11" text-anchor="end">1.00</text>
+<line x1="100.00" y1="140.00" x2="100.00" y2="380.00" stroke="#cbd0d5" stroke-width="1" stroke-dasharray=""/>
+<text x="320.00" y="429.00" font-size="13" text-anchor="middle">Prefix duration (seconds)</text>
+<g transform="rotate(-90 35 260.0)"><text x="35.00" y="260.00" font-size="12" text-anchor="middle">Spearman correlation of relative TPS</text></g>
+<text x="188.00" y="400.00" font-size="12" text-anchor="middle">60</text>
+<text x="452.00" y="400.00" font-size="12" text-anchor="middle">120</text>
+<polyline points="188.00,307.76 452.00,197.68" fill="none" stroke="#0072B2" stroke-width="2" stroke-dasharray=""/>
+<circle cx="188.00" cy="307.76" r="4" fill="#0072B2"><title>#0072B2</title></circle>
+<circle cx="452.00" cy="197.68" r="4" fill="#0072B2"><title>#0072B2</title></circle>
+<circle cx="100.00" cy="460.00" r="4" fill="#0072B2"><title>#0072B2</title></circle>
+<text x="112.00" y="465.00" font-size="11" text-anchor="start">88408573</text>
+<polyline points="188.00,252.70 452.00,174.62" fill="none" stroke="#D55E00" stroke-width="2" stroke-dasharray=""/>
+<polygon points="184.00,248.70 192.00,248.70 192.00,256.70 184.00,256.70" fill="#D55E00"><title>#D55E00</title></polygon>
+<polygon points="448.00,170.62 456.00,170.62 456.00,178.62 448.00,178.62" fill="#D55E00"><title>#D55E00</title></polygon>
+<polygon points="256.00,456.00 264.00,456.00 264.00,464.00 256.00,464.00" fill="#D55E00"><title>#D55E00</title></polygon>
+<text x="272.00" y="465.00" font-size="11" text-anchor="start">642754166</text>
+<polyline points="188.00,317.19 452.00,182.38" fill="none" stroke="#CC79A7" stroke-width="2" stroke-dasharray=""/>
+<polygon points="188.00,311.59 192.80,317.19 188.00,322.79 183.20,317.19" fill="#CC79A7"><title>#CC79A7</title></polygon>
+<polygon points="452.00,176.78 456.80,182.38 452.00,187.98 447.20,182.38" fill="#CC79A7"><title>#CC79A7</title></polygon>
+<polygon points="420.00,454.40 424.80,460.00 420.00,465.60 415.20,460.00" fill="#CC79A7"><title>#CC79A7</title></polygon>
+<text x="432.00" y="465.00" font-size="11" text-anchor="start">1418705027</text>
+<text x="650.00" y="118.00" font-size="16" text-anchor="start">B  Conservative promotion</text>
+<text x="650.00" y="154.00" font-size="13" text-anchor="start">Retrospective 60 s</text>
+<rect x="650" y="170" width="420.8994708994709" height="22" fill="#0072B2"/>
+<rect x="1070.899470899471" y="170" width="9.1005291005291" height="22" fill="#D55E00"/>
+<text x="650.00" y="213.00" font-size="12" text-anchor="start">370/378 promoted; 8 rejected</text>
+<text x="650.00" y="249.00" font-size="13" text-anchor="start">Retrospective 120 s</text>
+<rect x="650" y="265" width="428.8624338624339" height="22" fill="#0072B2"/>
+<rect x="1078.8624338624338" y="265" width="1.1375661375661494" height="22" fill="#D55E00"/>
+<text x="650.00" y="308.00" font-size="12" text-anchor="start">377/378 promoted; 1 rejected</text>
+<text x="650.00" y="344.00" font-size="13" text-anchor="start">Live demonstration</text>
+<rect x="650" y="360" width="415.6666666666667" height="22" fill="#0072B2"/>
+<rect x="1065.6666666666667" y="360" width="14.33333333333333" height="22" fill="#D55E00"/>
+<text x="650.00" y="403.00" font-size="12" text-anchor="start">29/30 promoted; 1 rejected</text>
+<text x="650.00" y="460.00" font-size="12" text-anchor="start">Blue: promoted   Orange: rejected</text>
+<text x="100.00" y="535.00" font-size="16" text-anchor="start">C  Primary evaluation lifecycle limits savings</text>
+<rect x="100.0" y="560" width="266.6414869788386" height="34" fill="#332288"/>
+<text x="233.32" y="620.00" font-size="13" text-anchor="middle">Restore: 26.7%</text>
+<rect x="366.6414869788386" y="560" width="360.55822030970796" height="34" fill="#0072B2"/>
+<text x="546.92" y="620.00" font-size="13" text-anchor="middle">Measurement: 36.1%</text>
+<rect x="727.1997072885465" y="560" width="372.8002927114534" height="34" fill="#D55E00"/>
+<text x="913.60" y="620.00" font-size="13" text-anchor="middle">Warm-up + other: 37.3%</text>
+<text x="100.00" y="664.00" font-size="18" text-anchor="start">Live savings: 540 s / 0.946% of matched all-F3 lifecycle</text>
+<text x="100.00" y="695.00" font-size="13" text-anchor="start">The matched all-F3 denominator is recorded accounting, not an executed comparison.</text>
+<text x="40.00" y="753.00" font-size="12" text-anchor="start">Retrospective: 378 physical candidates, three seeds; zero top-quartile false rejections at the registered 0.8 TPS floor.</text>
+<text x="40.00" y="771.00" font-size="12" text-anchor="start">Live: one seed, fixed Sobol design, 30 candidates + five controls. The rejected candidate has no observed F3 outcome.</text>
+<text x="40.00" y="789.00" font-size="12" text-anchor="start">Lifecycle: 655 successful primary trials, each counted once. Other includes configured 600 s warm-up; failed attempts/idle gaps excluded.</text>
+<text x="40.00" y="807.00" font-size="12" text-anchor="start">Promotion counts are descriptive. Retrospective and live scopes are separate; neither is a five-seed fidelity experiment.</text>
+</svg>

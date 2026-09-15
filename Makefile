@@ -1,7 +1,7 @@
-.PHONY: bootstrap up down seed index-seed index-experiment fidelity-pilot calibration-pilot smoke-test test unit-test integration-test e2e-test benchmark-default tune-single tune-multi tune-coordinated evaluate evaluate-drift evaluate-ablation report soak-test
+.PHONY: install up down seed-scale10 smoke lint typecheck unit-test integration-test build manifest-validate frozen-input-check import-check primary-final-report apply-best-status
 
-bootstrap:
-	uv sync --extra dev --frozen
+install:
+	uv sync --extra dev --extra docs --frozen
 
 up:
 	docker compose up -d --wait
@@ -10,58 +10,38 @@ up:
 down:
 	docker compose down
 
-seed:
+seed-scale10:
 	uv run charmdb seed --scale 10
 
-index-seed:
-	uv run charmdb index-seed --rows 300000
-
-index-experiment:
-	uv run charmdb index-experiment --customer-id 4242
-
-fidelity-pilot:
-	uv run charmdb fidelity-pilot
-
-calibration-pilot:
-	uv run charmdb calibration-pilot
-
-smoke-test:
+smoke:
 	uv run charmdb smoke
 
-test: unit-test
+lint:
+	uv run ruff check src tests scripts
+
+typecheck:
+	uv run mypy
 
 unit-test:
-	uv run pytest -m "not integration"
+	uv run pytest tests/unit
 
 integration-test:
-	uv run pytest -m integration
+	uv run pytest tests/integration
 
-e2e-test:
-	uv run pytest -m integration tests/integration/test_slice1.py
+build:
+	uv build
 
-benchmark-default:
-	uv run charmdb benchmark-default
+manifest-validate:
+	uv run python -m charmdb.protocol experiments/thesis/manifests
 
-tune-single:
-	uv run charmdb tune-single
+frozen-input-check:
+	uv run python scripts/check_frozen_inputs.py
 
-tune-multi:
-	uv run charmdb tune-multi
+import-check:
+	uv run python scripts/check_canonical_imports.py
 
-tune-coordinated:
-	uv run charmdb tune-coordinated
+primary-final-report:
+	uv run charmdb primary-final-report $(WAVE_B_CAMPAIGN_ID)
 
-evaluate:
-	uv run charmdb evaluate
-
-evaluate-drift:
-	uv run charmdb evaluate-drift
-
-evaluate-ablation:
-	uv run charmdb evaluate-ablation
-
-report:
-	uv run charmdb report
-
-soak-test:
-	uv run charmdb soak-test --duration "$(DURATION)"
+apply-best-status:
+	uv run charmdb apply-best-status --deployment-id $(DEPLOYMENT_ID)

@@ -198,28 +198,6 @@ def test_health_state_machine_rejects_skips_and_terminal_reentry() -> None:
         validate_transition("HEALTH_CHECK", "COMPLETED", "CREATED")
 
 
-def test_baseline_benchmark_state_machine_requires_measurement_order() -> None:
-    chain = [
-        "CREATED",
-        "CAPTURING_WORKLOAD_CONTEXT",
-        "VALIDATING_ACTIONS",
-        "ESTIMATING_STATIC_RISK",
-        "VERIFYING_DATABASE_HEALTH",
-        "VERIFYING_ACTIVE_CONFIGURATION",
-        "WARMING_UP",
-        "RESETTING_OR_SNAPSHOTTING_COUNTERS",
-        "RUNNING_FULL_EVALUATION",
-        "COLLECTING_METRICS",
-        "VALIDATING_MEASUREMENT",
-        "CALCULATING_OBJECTIVES",
-        "CALCULATING_CONSTRAINTS",
-        "PERSISTING_OBSERVATION",
-        "COMPLETED",
-    ]
-    for current, target in pairwise(chain):
-        validate_transition("BASELINE_BENCHMARK", current, target)
-    with pytest.raises(ValueError, match="invalid BASELINE_BENCHMARK transition"):
-        validate_transition("BASELINE_BENCHMARK", "WARMING_UP", "COMPLETED")
 
 
 def test_phase1_saturation_uses_benchmark_order_without_candidate_restore() -> None:
@@ -236,12 +214,6 @@ def test_phase1_saturation_uses_benchmark_order_without_candidate_restore() -> N
         )
 
 
-def test_tuned_benchmark_adds_apply_activation_and_rollback_states() -> None:
-    validate_transition("TUNED_BENCHMARK", "ESTIMATING_STATIC_RISK", "APPLYING_KNOBS")
-    validate_transition("TUNED_BENCHMARK", "APPLYING_KNOBS", "RELOADING_OR_RESTARTING")
-    validate_transition("TUNED_BENCHMARK", "RELOADING_OR_RESTARTING", "VERIFYING_DATABASE_HEALTH")
-    validate_transition("TUNED_BENCHMARK", "PERSISTING_OBSERVATION", "SELECTING_NEXT_ACTION")
-    validate_transition("TUNED_BENCHMARK", "SELECTING_NEXT_ACTION", "COMPLETED")
 
 
 def test_v2_baseline_requires_restore_and_fingerprint_before_benchmark() -> None:
@@ -355,7 +327,7 @@ def test_retry_reactivates_tuned_configuration_before_active_verification(
 
 def test_v2_physical_archive_trial_requires_archive_identity() -> None:
     with pytest.raises(ValueError, match="physical_archive_id"):
-        worker.create_v2_baseline_benchmark_trial(
+        worker.create_baseline_benchmark_trial(
             object(),  # type: ignore[arg-type]
             uuid.uuid4(),
             uuid.uuid4(),
@@ -368,7 +340,7 @@ def test_v2_physical_archive_trial_requires_archive_identity() -> None:
 
 def test_v2_tuned_trial_rejects_more_than_twelve_knobs_before_target_access() -> None:
     with pytest.raises(ValueError, match="one to twelve knobs"):
-        worker.create_v2_tuned_benchmark_trial(
+        worker.create_tuned_benchmark_trial(
             object(),  # type: ignore[arg-type]
             uuid.uuid4(),
             uuid.uuid4(),

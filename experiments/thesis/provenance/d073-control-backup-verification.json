@@ -1,0 +1,489 @@
+{
+  "decision": "D073",
+  "completed_at_utc": "2026-09-14T06:30:09.597852+00:00",
+  "status": "PASS",
+  "source_database": "charmdb",
+  "dump_file": "control.dump",
+  "dump_bytes": 18231225,
+  "dump_sha256": "df395af00c2162ec656f0c4cfcee8ce7b533111a6d9e9db58b8a8b1ae34f54c3",
+  "temporary_database": "charmdb_d073_verify_c1b243168ae94c66a27b3781b67f3a27",
+  "temporary_database_removed": true,
+  "source_before_equals_after_equals_restored": true,
+  "table_fingerprints": [
+    {
+      "schema": "charm_control",
+      "table": "analysis_reports",
+      "rows": 5,
+      "sha256": "9753bb37ca79bf8ab121397d699732553fded7f422bda4ec97baeb8731444d9d"
+    },
+    {
+      "schema": "charm_control",
+      "table": "artifacts",
+      "rows": 864,
+      "sha256": "63d8f8cc42424396a4dfde00c159c674da21e2b508d14393de1ff8e47d36c359"
+    },
+    {
+      "schema": "charm_control",
+      "table": "calibration_predictions",
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "schema": "charm_control",
+      "table": "calibration_reports",
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "schema": "charm_control",
+      "table": "campaign_events",
+      "rows": 349,
+      "sha256": "f42636405c5f84e1fadaa3057ec0e75771bcad4e42923d18de09b37484e914c3"
+    },
+    {
+      "schema": "charm_control",
+      "table": "campaigns",
+      "rows": 113,
+      "sha256": "d4e0834a81b0aa969c38100d472c868edc752868af31b83926b7f895b5e854f0"
+    },
+    {
+      "schema": "charm_control",
+      "table": "champion_selections",
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "schema": "charm_control",
+      "table": "configuration_applications",
+      "rows": 811,
+      "sha256": "3eb32ca0cb0ce08f7ec75ad51a7775aa8a346ab6021c1a2f0851678b70d502e7"
+    },
+    {
+      "schema": "charm_control",
+      "table": "configuration_snapshots",
+      "rows": 811,
+      "sha256": "03d4ad0efd7d3cfb281579d876104defafe1af6ed6aa393a52a44004a1920f32"
+    },
+    {
+      "schema": "charm_control",
+      "table": "coordination_decisions",
+      "rows": 18,
+      "sha256": "8ceed6efc15d6b96be21d097b2b01797091e58752fa36358619d8adbecd91966"
+    },
+    {
+      "schema": "charm_control",
+      "table": "cost_decisions",
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "schema": "charm_control",
+      "table": "cost_observations",
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "schema": "charm_control",
+      "table": "drift_detector_states",
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "schema": "charm_control",
+      "table": "drift_events",
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "schema": "charm_control",
+      "table": "early_stop_decisions",
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_arm_dataset_restores",
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_arm_events",
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_arms",
+      "rows": 168,
+      "sha256": "c3fc66b50419689fc6c5a5f28c227a6c0105d1b9abe20c005e02ea58e65350af"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_budget_entries",
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_candidate_dataset_baselines",
+      "rows": 3,
+      "sha256": "b74985078084ebb2a231ca136b8d5d67dfd3424ebea71ceed7aa7dce4dff405c"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_candidate_dataset_restores",
+      "rows": 812,
+      "sha256": "e85c385160167410d3c00b443b4740ed18c4112d901646fea19d96aeb5842bed"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_dataset_restore_validations",
+      "rows": 826,
+      "sha256": "e7e760708f409372aa7917091ea9f1836aadda3335756ecd91df27d0d6afd455"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_f3_reference_blocks",
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_groups",
+      "rows": 19,
+      "sha256": "271e5f097eb0c93fd3a918985adf214f43211f932697b6f4f9098093a0d468bc"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_manifest_preflights",
+      "rows": 4,
+      "sha256": "1e6fd451005ab93feeeafd465095d8c64349cbd0367dfe4fe60e82802ff66a36"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_manifest_reviews",
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_physical_dataset_archives",
+      "rows": 4,
+      "sha256": "7ce67b72915b7ecac52479757f24a261daf5a7c8d1552bd0128fe0cd4b80be12"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_restore_capability_assessments",
+      "rows": 2,
+      "sha256": "8ccfa66bda7e249c98b0538fe16ab890eae1a9ebc904fe179004539c7d594a98"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_saturation_phase1_ladders",
+      "rows": 9,
+      "sha256": "78ff7dd91280abbdb39176ae8d8bb82071a11261083723043f64b75f3b3bef40"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_saturation_phase1_probes",
+      "rows": 45,
+      "sha256": "ca8c1f4d0cd60e1d9db0de0a7f446720237fe1b3989d2be9a7bc329b9a79467d"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_saturation_phase2_configurations",
+      "rows": 8,
+      "sha256": "a50f88bddf60c964454a738860f89bfa7c0301ca15a7193b02a4c7df46327a07"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_search_recommendations",
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_v2_apply_best_deployments",
+      "rows": 1,
+      "sha256": "3b8a0779fa8248fece21d66477a5a69239df3ec2c60f78b97628f5aa4c9be649"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_v2_default_reference_blocks",
+      "rows": 1,
+      "sha256": "3568f33b46abba975166368fa69f2ef2b48c24aa113bde352f03a1230f8086ce"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_v2_default_reference_runs",
+      "rows": 5,
+      "sha256": "c45be9712b3e207be2b519a6910ba35a09ef35243dd2544dfe337f1643182e6c"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_v2_f4_attempts",
+      "rows": 20,
+      "sha256": "546db76aac69334b214bc5a9a4f259b3450907dae008b065dfd6f3b8c86c977c"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_v2_f4_blocks",
+      "rows": 1,
+      "sha256": "6a0d15f5e2945ef7802e1cbf774ef45cf0ebb98fc002caacb5c2475b6c0eda46"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_v2_f4_runs",
+      "rows": 20,
+      "sha256": "63eac835ed1bdab9485ff847a725b4120621cacff86813ceea5224430bf1eb56"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_v2_multifidelity_phase_b_attempts",
+      "rows": 36,
+      "sha256": "108db4cbfdd5d7b703a9867d4ce5989b9e7af820e820a71a32b9b9739abf99ca"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_v2_multifidelity_phase_b_blocks",
+      "rows": 1,
+      "sha256": "725d9a97013eca05fcd2eee1ac9eb58192d41fa53dc54e25b1c3c4aa9b453be1"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_v2_multifidelity_phase_b_runs",
+      "rows": 35,
+      "sha256": "5e08ceaae005b3ef7279584750730a15be5d73ba60aeb6c5c5930960dbbd9020"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_v2_primary_attempts",
+      "rows": 657,
+      "sha256": "28e5b449aa1a6403889d3e154e5dc4624433ef1ca1697a30c6fc4a96a103d4fe"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_v2_primary_blocks",
+      "rows": 2,
+      "sha256": "dde34654f9911c6e008a91bc31f575f9ec38b2c4541fcab646f5404fc4ab85a7"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_v2_primary_restore_soak_runs",
+      "rows": 30,
+      "sha256": "48cb4f261259b3eced39b32e1db9032a3d6b8e9dc7177d2c95d2eb0540d789af"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_v2_primary_restore_soaks",
+      "rows": 2,
+      "sha256": "8eb9aaa402c574b6195691236faab1651fef7c73fc9c90aee1264effcd197efb"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_v2_primary_runs",
+      "rows": 655,
+      "sha256": "2bd3b74fb93c5be5684fdda80abc8de02c2baf0bb8b244ae09fa0dd1acc458ea"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_v2_primary_training_lineage",
+      "rows": 5535,
+      "sha256": "6eedbd55d8fe401fc52d2e9fe1edd47af511d8f6e51d3abefc1b5d64bbd4d9c0"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_v2_restore_stability_blocks",
+      "rows": 2,
+      "sha256": "261efa7d92e1778353adec2bda13e24e7fb6fa193413f3a26bfff4d72cda22bb"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_v2_restore_stability_runs",
+      "rows": 6,
+      "sha256": "ea20a56f1ff8f644da25e3a5934bdebce9ad73dbbf3dbe1316ef23587b191b11"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_v2_screening_blocks",
+      "rows": 1,
+      "sha256": "2143bc062263d44d7e8667a53d0bd04558f3fb37aa3618f33d5a2a512328b6be"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_v2_screening_recovery_blocks",
+      "rows": 1,
+      "sha256": "d1032430eec2a956574fe364257add2d724677d6e12171ee3b9acc0c5ebd101a"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_v2_screening_recovery_runs",
+      "rows": 2,
+      "sha256": "d9f09d6087ffae2fd669e0cbc6353ba272e79efc7e709f2746697eb4ac72c690"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_v2_screening_runs",
+      "rows": 35,
+      "sha256": "1739cc29c494b3c4bbabf4f4c87ee014b35bfbdc6edd483d37dbc7f4b96e917a"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_v2_target_database_remediations",
+      "rows": 1,
+      "sha256": "5d1cadc96edd82a63727d69f13b8487fdccefd35ae3e93234b07cda987d3c262"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_warmup_duration_pilots",
+      "rows": 2,
+      "sha256": "a65c10bd21975a5a059940cdd39db20097ebf45dcd47257cbd657a6693567d8a"
+    },
+    {
+      "schema": "charm_control",
+      "table": "experiment_warmup_duration_runs",
+      "rows": 29,
+      "sha256": "1beb491800843ab9919d16abb5a34b2e824727502245f88b858658b8db08b460"
+    },
+    {
+      "schema": "charm_control",
+      "table": "fidelity_observations",
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "schema": "charm_control",
+      "table": "fidelity_reports",
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "schema": "charm_control",
+      "table": "index_candidates",
+      "rows": 2,
+      "sha256": "52e543fcf6ac4ae529c7df6694147a74d35511711e3eeeabd8b8d302d868aa11"
+    },
+    {
+      "schema": "charm_control",
+      "table": "index_lifecycle_events",
+      "rows": 60,
+      "sha256": "699611ec2bd164e3c923db9b9f22aa977dec9808712430f951265b3e8eee7568"
+    },
+    {
+      "schema": "charm_control",
+      "table": "index_measurements",
+      "rows": 6,
+      "sha256": "5aabc748219f64e868da48f8a3f54cb79824ac6553d15bc69c61d4b9edd64362"
+    },
+    {
+      "schema": "charm_control",
+      "table": "metric_snapshots",
+      "rows": 1723,
+      "sha256": "4e637236a68ca10ed6071b836a96db7888860e51a915155cace87a4a149d5d5e"
+    },
+    {
+      "schema": "charm_control",
+      "table": "multi_objective_recommendations",
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "schema": "charm_control",
+      "table": "multi_objective_runs",
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "schema": "charm_control",
+      "table": "optimization_observations",
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "schema": "charm_control",
+      "table": "optimizer_gate_decisions",
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "schema": "charm_control",
+      "table": "pareto_snapshots",
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "schema": "charm_control",
+      "table": "promotion_decisions",
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "schema": "charm_control",
+      "table": "rollbacks",
+      "rows": 810,
+      "sha256": "ea954f97c0deec062aaa758a78b11da81013d4bbbb2dcc0eba811c6bd12f1f27"
+    },
+    {
+      "schema": "charm_control",
+      "table": "schema_migrations",
+      "rows": 44,
+      "sha256": "2532077fe9a88b70480b6c02a63b1243b9687d476a751eb229102c6522b40dc2"
+    },
+    {
+      "schema": "charm_control",
+      "table": "transfer_decisions",
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "schema": "charm_control",
+      "table": "transfer_history",
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "schema": "charm_control",
+      "table": "transfer_reports",
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "schema": "charm_control",
+      "table": "trial_action_executions",
+      "rows": 15292,
+      "sha256": "ead6f30e557ba84597e8496ddde38516ea2a6b21f7ef50225c7227047cc0affa"
+    },
+    {
+      "schema": "charm_control",
+      "table": "trial_actions",
+      "rows": 9,
+      "sha256": "4b53d8ca4f2f95b36baa030d28823069f8889498a8fa037efa3d90a93ed5f108"
+    },
+    {
+      "schema": "charm_control",
+      "table": "trial_transitions",
+      "rows": 17170,
+      "sha256": "0a0f7ee1865d87d2d9e785bf611e6ce083ba06329f2753c0d14d4e2e552562b5"
+    },
+    {
+      "schema": "charm_control",
+      "table": "trials",
+      "rows": 946,
+      "sha256": "bcaf17f0bcce1c0932a7bde4caf25078641574839465729a22cfcd191de0a12b"
+    },
+    {
+      "schema": "charm_control",
+      "table": "workload_contexts",
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "schema": "charm_control",
+      "table": "workload_fingerprints",
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "scope": "Local isolated logical restore; ownership/ACL/global roles not included; not a separate-host recovery test"
+}

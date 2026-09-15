@@ -1,0 +1,7 @@
+method,logical_slots,completed_slots,valid_candidate_observations,completed_but_invalid_slots,candidate_failed_slots,infrastructure_exhausted_slots,retained_infrastructure_attempts,slots_with_infrastructure_retry
+random,150,150,150,0,0,0,150,150
+sobol,150,150,150,0,0,0,150,150
+bo_qlognei_throughput,150,150,150,0,0,0,152,150
+bo_qlognparego_multiobjective,150,150,150,0,0,0,152,150
+bo_qlognehvi_multiobjective,150,150,150,0,0,0,152,150
+postgresql_default,0,25,25,0,0,0,25,25

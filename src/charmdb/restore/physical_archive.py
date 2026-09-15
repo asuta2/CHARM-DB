@@ -13,17 +13,17 @@ from psycopg.types.json import Jsonb
 from charmdb.config import Settings
 from charmdb.db import connect
 from charmdb.protocol import PROTOCOL_ID
-from charmdb.restore.candidate import (
-    CandidateBaseline,
-    capture_live_fingerprint,
-    compare_fingerprints,
-    standardize_logical_restore_state,
-)
 from charmdb.restore.capability import (
     TARGET_DATA_DESTINATION,
     TARGET_SERVICE,
     run_docker,
 )
+from charmdb.restore.fingerprint import (
+    capture_live_fingerprint,
+    compare_fingerprints,
+    standardize_logical_restore_state,
+)
+from charmdb.restore.models import CandidateBaseline
 
 PHYSICAL_ARCHIVE_FILENAME_PREFIX = "physical-canonical"
 

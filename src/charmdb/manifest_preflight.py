@@ -20,7 +20,7 @@ from psycopg.types.json import Jsonb
 from charmdb.config import Settings
 from charmdb.controller import discover_knobs
 from charmdb.db import connect
-from charmdb.experiment_execution import evaluate_prerequisite_gate
+from charmdb.measurement_evidence import assess_f3_measurement_evidence
 from charmdb.provenance import source_tree_sha256
 from charmdb.resources import capture_and_validate_resources
 
@@ -360,7 +360,7 @@ def run_manifest_preflight(
     unresolved = assess_manifest_evidence(
         references, warmup_seconds, measurement_seconds, concurrency
     )
-    measurement_gate = evaluate_prerequisite_gate(settings, "measurement_validity")
+    measurement_gate = assess_f3_measurement_evidence(settings)
     knobs = {
         str(row["name"]): {
             "setting": row["setting"],

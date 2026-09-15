@@ -38,7 +38,6 @@ packages = ["src/charmdb"]
 
 [tool.hatch.build.targets.sdist]
 exclude = [
-  "/docs/history",
   "/experiments/historical/authored-scripts",
   "/experiments/thesis/archive/docx",
   "/results",

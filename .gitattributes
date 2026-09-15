@@ -14,6 +14,5 @@ results/thesis-final/publication-figure-index.json -text -eol
 results/thesis-final/safety-accounting-correction.csv -text -eol
 results/thesis-final/safety-accounting-erratum.md -text -eol
 experiments/thesis/archive/docx/* -text -eol
-docs/history/** -text -eol
 experiments/thesis/provenance/* -text -eol
 experiments/historical/authored-scripts/* -text -eol

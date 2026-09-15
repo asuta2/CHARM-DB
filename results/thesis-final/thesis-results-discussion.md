@@ -218,9 +218,9 @@ is inferred from them.
   submission package. Performance tables preserve the frozen numeric values.
 - Corrected accounting: `tables/safety-accounting-correction.csv` and
   `safety-accounting-erratum.md` in the submission package.
-- Frozen profile, methodology, decisions and current acceptance assessment:
-  the source archive's `docs/methodology.md`, `docs/limitations.md`,
-  `docs/reproducibility.md`, and `docs/history/continuation/ACCEPTANCE_CRITERIA-original.md`.
+- Frozen profile, methodology, limitations and reproducibility:
+  the source archive's `docs/frozen-benchmark-profile.md`, `docs/methodology.md`,
+  `docs/limitations.md`, and `docs/reproducibility.md`.
 
 This chapter is ready for author integration into the main manuscript. Chapter
 numbering, institutional formatting and bibliography cross-references belong

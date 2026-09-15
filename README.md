@@ -1,13 +1,60 @@
 # CHARM-DB
 
-CHARM-DB is a PostgreSQL tuning research system with a durable control database, isolated target, candidate-level restores, five-method primary optimization, secondary multi-fidelity analysis, F4 confirmation, and a recoverable `apply-best` workflow. The thesis implementation in `src/charmdb` is the canonical runtime. Protocol identifiers containing `v2` remain frozen scientific and database contracts.
+### Database Optimization via Machine Learning
 
-The recorded five-seed comparison and final report are complete with drift flags. The [frozen report](results/thesis-final/frozen-report/final-five-seed-report.md) is preserved; cite its [safety-accounting correction](results/thesis-final/safety-accounting-erratum.md) for retry counts. Champion E was recovery-tested and explicitly activated on the recorded host. These records do not establish clean-machine replication, cross-workload tuning, learned-risk constraints, or index coordination efficacy.
+**Ajdin Šuta — Master’s thesis, Faculty of Electrical Engineering, University of Sarajevo, 2026.**
 
-## Start here
+CHARM-DB is the research implementation and experiment repository accompanying this thesis. It studies how machine learning can allocate a limited PostgreSQL tuning budget to improve throughput and tail latency while preserving database durability and operational safety.
 
-Install Python 3.12 or 3.13, `uv`, Docker Compose, PostgreSQL client tools, and `pgbench`. Copy `.env.example` to `.env` and set separate control and target DSNs and credentials. Keep the target on an allowlisted host and set `CHARMDB_ARTIFACT_DIR` to a separate evidence root with sufficient space. Run `make install`, `make up`, and `make smoke`. A new machine needs fresh control and artifact state and recaptured reference evidence.
+## Research overview
 
-The CLI is `uv run charmdb --help`. `make manifest-validate`, `make import-check`, `make lint`, `make typecheck`, `make unit-test`, and `make build` are local checks. `make integration-test` requires disposable separate `charmdb_test_*` databases and `CHARMDB_DISPOSABLE_INTEGRATION=1`; see [development](docs/development.md).
+The study compares **random search, scrambled Sobol search, and three Bayesian optimization methods**: throughput-oriented qLogNEI, multi-objective qLogNParEGO, and multi-objective qLogNEHVI. The framework provides:
 
-Read [installation](docs/installation.md), [configuration](docs/configuration.md), the [architecture](docs/architecture.md), [operator guide](docs/operator-guide.md), [methodology](docs/methodology.md), [reproducibility guide](docs/reproducibility.md), and [limitations](docs/limitations.md). Frozen manifests and preregistrations live in [`experiments/thesis`](experiments/thesis); historical experiment materials live in [`experiments/historical`](experiments/historical). Authenticated raw measurements, snapshots, and control records stay in their artifact and database roots; the curated results are publication copies.
+- Candidate-level database restoration and fingerprint verification for repeatable evaluations.
+- Durable experiment scheduling, bounded retries, and interleaved PostgreSQL-default controls.
+- Multi-fidelity evaluation using shorter measurement windows, finalist confirmation, and recoverable configuration deployment.
+- Deterministic reports, publication figures, and evidence integrity checks.
+
+The final comparison covers **five seeds, 30 candidate slots per method per seed, and 655 physical observations**, including shared initialization and default controls. It uses PostgreSQL 18.1, eight tuning parameters, and a fixed pgbench workload. See the [methodology](docs/methodology.md) and [benchmark profile](docs/frozen-benchmark-profile.md).
+
+## Results and thesis materials
+
+Bayesian methods produced configurations that jointly improved on the local default in approximately **63–68% of candidate slots**, compared with **13–19%** for random and Sobol search. Their mean throughput stayed closer to default while mean p99 latency improved. These are descriptive results for the tested workload; the five-seed comparison retains drift flags and does not establish universal performance superiority.
+
+| Material | Location |
+|---|---|
+| Main findings and interpretation | [Results and discussion](results/thesis-final/thesis-results-discussion.md) |
+| Complete five-seed report | [Frozen report](results/thesis-final/frozen-report/final-five-seed-report.md) |
+| Publication-ready figures | [SVG figures](results/thesis-final/publication-figures) |
+| Detailed measurements and comparisons | [CSV tables](results/thesis-final/frozen-report/tables) |
+| Corrected failure and retry accounting | [Safety erratum](results/thesis-final/safety-accounting-erratum.md) and [corrected table](results/thesis-final/safety-accounting-correction.csv) |
+| Experiment definitions and provenance | [Manifests, preregistrations, and receipts](experiments/thesis) |
+
+Use the safety erratum when citing retry counts; the original report is retained for provenance. Raw transaction logs, database snapshots, and the full evidence archive are stored outside Git. The [reproducibility guide](docs/reproducibility.md) explains what can be verified from this checkout and what requires the original evidence.
+
+## Getting started
+
+Requirements: **Python 3.12 or 3.13**, `uv`, Docker Compose, and PostgreSQL client tools, including `pgbench`. Run from a source checkout:
+
+```sh
+uv sync --extra dev --frozen
+uv run charmdb --help
+```
+
+For a local database environment, copy `.env.example` to `.env`, configure separate control and target databases, and choose a dedicated `CHARMDB_ARTIFACT_DIR`. Then, with Make installed:
+
+```sh
+make up
+make smoke
+```
+
+Follow [installation](docs/installation.md), [configuration](docs/configuration.md), and the [operator guide](docs/operator-guide.md) before running experiments. A new host requires fresh state and reference measurements; independent clean-machine reproduction has not been established.
+
+## Repository and development
+
+- [`src/charmdb`](src/charmdb) — canonical runtime, optimization, restoration, analysis, reporting, and CLI.
+- [`docs`](docs) — architecture, methodology, operation, and research limitations.
+- [`experiments/thesis`](experiments/thesis) and [`results/thesis-final`](results/thesis-final) — experiment contracts and curated results.
+- [`tests`](tests), [`migrations`](migrations), and [`scripts`](scripts) — validation, database schema, and supporting tools.
+
+Run local checks with `make lint typecheck unit-test import-check manifest-validate frozen-input-check build`. Integration tests require disposable databases; see [development and CI](docs/development.md). Remaining research boundaries are documented in [limitations](docs/limitations.md).

@@ -1,9 +1,9 @@
 # Frozen benchmark profile
 
-D024 freezes the following profile for the final default-reference block,
-parameter screening, and later v2 stages. A later change requires a new
-append-only decision and invalidates direct pooling with evidence collected
-under this profile.
+The benchmark decision freezes the following profile for the final default-reference
+block, parameter screening, and later v2 stages. A later change requires a new
+append-only decision and invalidates direct pooling with evidence collected under this
+profile.
 
 | Field | Frozen value |
 |---|---|
@@ -25,7 +25,7 @@ under this profile.
 ## Duration decision and limitation
 
 The duration campaign completed 12 of its planned 21 measurements with zero
-benchmark failures. It was stopped by D024 because 300 seconds had already
+benchmark failures. The decision was to stop it because 300 seconds had already
 become mathematically unable to pass the pre-registered standalone p99 gate:
 the two observed absolute p99 differences were 1.806 ms and 7.745 ms, and the
 median of three values cannot fall below 1.806 ms even if the unrun third value
@@ -40,9 +40,9 @@ as a fully completed duration pilot.
 
 ## Still unresolved
 
-D025 separately resolves the default-reference precision/drift thresholds and
-five final seeds without changing this profile. D026 accepts the bounded
-default-reference runtime. D027 records that its five-observation launch block
-passed without contingency. The primary hypervolume reference point, screened
-knob set, learned-constraint framing, and primary budget and schedule remain
-separate gates.
+The reference-design decision separately resolves the default-reference precision/drift
+thresholds and five final seeds without changing this profile. The runtime review
+accepts the bounded default-reference runtime. The validation record confirms that the
+five-observation launch block passed without contingency. The primary hypervolume
+reference point, screened knob set, learned-constraint framing, and primary budget and
+schedule remain separate gates.

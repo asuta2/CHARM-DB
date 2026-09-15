@@ -112,18 +112,18 @@ change to endpoints, reference point, valid-observation rules, retry treatment,
 drift adjustment, or multiplicity family is permitted without an append-only
 deviation record and a separate sensitivity analysis.
 
-D063 changes Wave B from optional/reserved to authorized-after-readiness but
+The decision to proceed with Wave B makes execution conditional on readiness and
 does not change those analysis rules. Render a standalone two-seed Wave B
 report first, followed by a combined five-seed report that combines seed-level
 endpoint values only. Candidate distributions and local-control domination
 shares remain descriptive; candidate rows are not independent replicates.
 
-D066 prospectively requires the combined five-seed report to regenerate the
-complete primary surface after terminal Wave B: JSON analysis, Markdown, all
-nine primary CSV tables, all six primary SVG figures, and the deterministic hash
+The reporting decision prospectively requires the combined five-seed report to
+regenerate the complete primary surface after terminal Wave B: JSON analysis, Markdown,
+all nine primary CSV tables, all six primary SVG figures, and the deterministic hash
 index. The consolidated renderer must merge the detailed five-seed trajectories,
-controls, Pareto rows, drift records, failures, and safety accounting needed by
-those outputs; a summary-only merge is insufficient.
+controls, Pareto rows, drift records, failures, and safety accounting needed by those
+outputs; a summary-only merge is insufficient.
 
 The combined outputs treat all five seeds as one cohort. They must contain no
 Wave A/Wave B label, heading, facet, legend entry, color, marker, line style,
@@ -143,33 +143,32 @@ rerendering, and absence of Wave A/Wave B presentation tokens. Real values and
 figures are generated only after all 262 Wave B observations are terminal and
 the standalone Wave B report authenticates them.
 
-D068-D069 close those gates. The standalone Wave B analysis/report was rendered
-first under analysis SHA `c2486ee7...6db78ebb` and report payload SHA
-`4b322d90...a329c6b`. The subsequent combined analysis SHA is
-`769f5a0e...66a36fb2`. Its report contains 17 files: Markdown, nine populated
-tables (25 controls, 5 drift rows, 5 method outcomes, 50 pairwise contrasts,
-8 Pareto rows, 6 safety rows, 25 seed-level summaries, 25 seed-method outcomes,
-and 750 trajectory rows), six SVGs, and the index. Table-payload SHA is
-`5776d42c...1e02634` and index SHA is `97a37d46...51747fd2`. The real-data
-rerender was byte-identical, every SVG parsed as XML, and the Markdown/CSV/SVG
-scan returned zero Wave A/Wave B token matches. The combined drift figure uses
-the common within-seed 1-131 schedule axis.
+The standalone and combined report validations closed those gates. The standalone Wave B
+analysis/report was rendered first under analysis SHA `c2486ee7...6db78ebb` and report
+payload SHA `4b322d90...a329c6b`. The subsequent combined analysis SHA is
+`769f5a0e...66a36fb2`. Its report contains 17 files: Markdown, nine populated tables (25
+controls, 5 drift rows, 5 method outcomes, 50 pairwise contrasts, 8 Pareto rows, 6
+safety rows, 25 seed-level summaries, 25 seed-method outcomes, and 750 trajectory rows),
+six SVGs, and the index. Table-payload SHA is `5776d42c...1e02634` and index SHA is
+`97a37d46...51747fd2`. The real-data rerender was byte-identical, every SVG parsed as
+XML, and the Markdown/CSV/SVG scan returned zero Wave A/Wave B token matches. The
+combined drift figure uses the common within-seed 1-131 schedule axis.
 
-D070 adds a separate non-benchmark deployment ledger to the standard evidence
-package. `apply-best-deployments.json` contains the singleton champion-E workflow,
-source hashes, requested configuration and configuration hash, durable recovery
-application/snapshot IDs, exact apply/rollback health evidence, the retained sandbox
-permission interruption, and empty activation-authorization fields. Its payload SHA is
-`0d41c0fd...cca31`. The refreshed 26-export index payload/file SHAs are
-`0df2cbb8...92458` / `feca1ed5...ffb47`. The complete 5,457-file evidence-tree
-manifest covers 60,121,494,326 bytes under payload/file SHAs
-`7553180f...4bde6` / `e2e37f0a...58ea5`.
+The recovery-test decision adds a separate non-benchmark deployment ledger to the
+standard evidence package. `apply-best-deployments.json` contains the singleton
+champion-E workflow, source hashes, requested configuration and configuration hash,
+durable recovery application/snapshot IDs, exact apply/rollback health evidence, the
+retained sandbox permission interruption, and empty activation-authorization fields. Its
+payload SHA is `0d41c0fd...cca31`. The refreshed 26-export index payload/file SHAs are
+`0df2cbb8...92458` / `feca1ed5...ffb47`. The complete 5,457-file evidence-tree manifest
+covers 60,121,494,326 bytes under payload/file SHAs `7553180f...4bde6` /
+`e2e37f0a...58ea5`.
 
-D071 refreshes the same deployment export with persisted explicit authorization,
-`ACTIVE` state, activation application/snapshot, and passed setting/health checks.
-Its payload SHA is `814ae6c0...16fb833`; the 26-export index payload/file SHAs are
-`3af9b7ff...9bab0c3` / `22963142...8f42db`. D070 hashes above are historical.
-No benchmark observation was added.
+The activation decision refreshes the same deployment export with persisted explicit
+authorization, `ACTIVE` state, activation application/snapshot, and passed
+setting/health checks. Its payload SHA is `814ae6c0...16fb833`; the 26-export index
+payload/file SHAs are `3af9b7ff...9bab0c3` / `22963142...8f42db`. The pre-activation
+hashes above are historical. No benchmark observation was added.
 
 The results narrative leads with reliability of candidate quality: Wave A BO
 methods held mean control-relative TPS near zero and locally dominated default
@@ -179,14 +178,14 @@ finds a faster champion. Report p99 in milliseconds, state that about 1 ms at
 about 26 ms is modest, and do not rank qLogNParEGO against qLogNEHVI; their
 individual values stay visible under a family-level multi-objective conclusion.
 
-The D039 pre-launch package must also export migration 038, the complete
+The pre-launch reliability package must also export migration 038, the complete
 primary restore-soak block/run ledger, every linked restore validation, duration
 summary, init-process evidence, configured artifact directory, and result hash.
 The evidence-tree manifest is rooted at the configured `CHARMDB_ARTIFACT_DIR`;
 the retained OneDrive source copy is not the authoritative runtime tree after
 relocation.
 
-## D040 implemented reporting surface
+## Implemented reporting surface
 
 The specification above is now executable rather than descriptive. `charmdb
 primary-report <campaign_id>` renders a complete package from a terminal
@@ -233,15 +232,15 @@ formula, never from a benchmark. Every rehearsal artifact is labelled
 `primary-comparison/analysis-rehearsal-synthetic/`. It is not evidence about
 any method.
 
-## Registered secondary showcase displays (D050)
+## Registered secondary showcase displays
 
-Wave A's terminal analysis is complete (D049, outcome `COMPLETE_WITH_DRIFT_FLAGS`,
+Wave A's terminal analysis is complete (outcome `COMPLETE_WITH_DRIFT_FLAGS`,
 analysis payload SHA-256 `fa6263830e...cbda8f21`). The following secondary
 displays were adjudicated against the full three-seed results and are registered
 here with frozen formulas before implementation. They are exploratory
 presentation aids: every one reuses already-registered quantities, none defines
 a new endpoint, none participates in confirmatory inference, and the five
-registered endpoints plus the D049 deterministic report remain the sole primary
+registered endpoints plus the deterministic terminal report remain the sole primary
 evidence. Seed is the only inferential unit; candidate-level rows are
 descriptive and are never treated as independent replicates. No composite
 "overall winner" score may be constructed.
@@ -317,7 +316,7 @@ output are retained at
 `showcase-adjudication-results.json` (SHA-256 `4b70209...9bd7dac`,
 `33bc60f...c061d930`), derived exclusively from the terminal analysis export.
 
-D051 implements this registration in `charmdb.reporting.secondary` and the
+This registration is implemented in `charmdb.reporting.secondary` and the
 `primary-report-secondary` CLI command. The renderer authenticates the
 terminal export's embedded analysis hash and requires its complete 393-slot
 history before writing. The executed output is
@@ -332,29 +331,29 @@ SHA-256 `7e996972...e2cc93`.
 
 ## Frozen screening evidence
 
-The screening report must show all 32 planned Sobol slots, including invalid or
-failed outcomes; the three chronological default controls; PRCC values for TPS
-and p99; the maximum-absolute statistic and 0.20 threshold; ambiguity and any
-paired endpoint follow-ups; control drift; final inclusion/exclusion rationale;
-and the exact manifest, Sobol-design, and schedule hashes. It must state the
-valid-observation count and must not silently replace a failed configuration.
-Migration 032 provides the immutable block/run source for this report; terminal
-analysis exports must verify their embedded ledger SHA-256 before writing.
-If D031 supplies positions 34 and 35, the report must also identify both source
-ledgers, show D030's failed/planned tail, include the three-repetition restore-
-stability result hash, and expose the unadjusted chronology gap. It must not
-present the two ledgers as one uninterrupted execution block.
-D032 evidence must additionally retain D031's terminal fingerprint mismatch,
-the registered orphan file nodes and byte totals, pre/post database size, the
-snapshot-backed remediation result hash, and the superseding validation lineage.
-D033's terminal report must show the 6.438 ms p99 drift failure prominently and
-must not itself display a selected knob set or imply that OAT was run. The
-separate D035 amendment report may show the eight selected knobs only when it
-also labels the selection post-result, exploratory, drift-limited, and without
-OAT. It must give both included and excluded parameters, raw and time-adjusted
-ranking checks, leave-one-out threshold frequency, and the exact D033 hash.
-D034 has no result report: it was retired with zero campaign and zero
-observations. Its manifest and migration remain as historical design evidence.
+The screening report must show all 32 planned Sobol slots, including invalid or failed
+outcomes; the three chronological default controls; PRCC values for TPS and p99; the
+maximum-absolute statistic and 0.20 threshold; ambiguity and any paired endpoint
+follow-ups; control drift; final inclusion/exclusion rationale; and the exact manifest,
+Sobol-design, and schedule hashes. It must state the valid-observation count and must
+not silently replace a failed configuration. Migration 032 provides the immutable
+block/run source for this report; terminal analysis exports must verify their embedded
+ledger SHA-256 before writing. If the supplemental recovery ledger supplies positions 34
+and 35, the report must also identify both source ledgers, show the original campaign's
+failed/planned tail, include the three-repetition restore- stability result hash, and
+expose the unadjusted chronology gap. It must not present the two ledgers as one
+uninterrupted execution block. Remediation evidence must additionally retain the
+recovery validation's terminal fingerprint mismatch, the registered orphan file nodes
+and byte totals, pre/post database size, the snapshot-backed remediation result hash,
+and the superseding validation lineage. The terminal screening report must show the
+6.438 ms p99 drift failure prominently and must not itself display a selected knob set
+or imply that OAT was run. The separate exploratory amendment report may show the eight
+selected knobs only when it also labels the selection post-result, exploratory,
+drift-limited, and without OAT. It must give both included and excluded parameters, raw
+and time-adjusted ranking checks, leave-one-out threshold frequency, and the exact
+terminal screening analysis hash. The temporal-stability block has no result report: it
+was retired with zero campaign and zero observations. Its manifest and migration remain
+as historical design evidence.
 
 Primary Wave A reporting must remain separate from any later Wave B pooled
 analysis. Report all three seeds, 30-slot method budgets, shared-initial-design
@@ -368,7 +367,7 @@ each retained file independently and exclude the manifest file itself.
 
 ## Live multi-fidelity Phase B terminal evidence
 
-D057 adds a compact authenticated Phase B analysis at
+The live multi-fidelity analysis adds a compact authenticated Phase B analysis at
 `multi-fidelity/phase-b/phase-b-analysis.json`. It reports the frozen success gates,
 35-slot / 36-attempt accounting, promotion and rejection counts, matched all-F3
 counterfactual time, pre-retry runtime-model error, control sequence, continuation
@@ -377,23 +376,23 @@ reconnect gaps, and the sole rejected candidate. Analysis payload SHA-256 is
 export file SHA-256 is
 `cb5bd6e644fe89bd021ff44c53182dabdcc874f93a7f03bcd3dbae21052ce2b3`.
 
-The evidence-ledger index also contains separate Phase B block, run, and attempt
-exports with 1, 35, and 36 rows. Any thesis table must show that 29/30 candidates
-promoted, one rejection saved 540 seconds / 0.946% of total matched lifecycle,
-and the time-model error was 2.303% against the 10% limit. It must also retain the
-D056 infrastructure failure, the five-control TPS/p99 sequence, the single-seed
-scope, and the fact that candidate 26 has no observed F3 counterfactual. No figure
-or table may label the rejection a true or false rejection, infer a population
-promotion rate, or convert this secondary live demonstration into confirmatory
-multi-seed evidence.
+The evidence-ledger index also contains separate Phase B block, run, and attempt exports
+with 1, 35, and 36 rows. Any thesis table must show that 29/30 candidates promoted, one
+rejection saved 540 seconds / 0.946% of total matched lifecycle, and the time-model
+error was 2.303% against the 10% limit. It must also retain the initial live-campaign
+infrastructure failure, the five-control TPS/p99 sequence, the single-seed scope, and
+the fact that candidate 26 has no observed F3 counterfactual. No figure or table may
+label the rejection a true or false rejection, infer a population promotion rate, or
+convert this secondary live demonstration into confirmatory multi-seed evidence.
 
-## D072 post-result safety-accounting erratum
+## Post-result safety-accounting erratum
 
-The source specification and frozen reports remain unchanged. Closeout validation
-found that the final safety table counts first attempts as retries and the safety
-figure sums shared BO method attributions as physical infrastructure events. Use
-the correction in `thesis-closeout.md` and its generated CSV/caption: 655 physical
-slots, 657 attempts, 655 completed attempts, two failed attempts, two retried slots.
-Each BO method inherits both shared-initialization failures; method attributions
-must not be summed. No endpoint or inference changed. The D072 script reproduces
-the original report exactly and emits the companion correction separately.
+The source specification and frozen reports remain unchanged. Closeout validation found
+that the final safety table counts first attempts as retries and the safety figure sums
+shared BO method attributions as physical infrastructure events. Use the
+[safety-accounting correction](../results/thesis-final/safety-accounting-erratum.md) and
+its accompanying table: 655 physical slots, 657 attempts, 655 completed attempts, two
+failed attempts, two retried slots. Each BO method inherits both shared-initialization
+failures; method attributions must not be summed. No endpoint or inference changed. The
+closeout audit script reproduces the original report exactly and emits the companion
+correction separately.

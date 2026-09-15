@@ -157,7 +157,7 @@ candidate slots; neither consumed an additional candidate slot.
 | Retained failed attempts | 2 |
 | Slots requiring a retry | 2 |
 
-This table incorporates the D072 reporting erratum. The historical report
+This table incorporates the safety-accounting reporting correction. The historical report
 mistakenly treated a total-attempt counter as a retry count. Both failures
 concern shared BO initialization and are attributed to each BO method for
 logical accounting; they remain two physical events rather than six. The

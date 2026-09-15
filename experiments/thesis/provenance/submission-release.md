@@ -1,6 +1,6 @@
-# D073 local submission release
+# Local submission release
 
-D073 packages the narrowed thesis results for author integration and preserves the
+The release packages the narrowed thesis results for author integration and preserves the
 current source, full external evidence and a verified control-database backup.
 The release directory is `C:\CHARMDB-RELEASES\d073`, outside the OneDrive source
 workspace. The standalone chapter is [thesis-results-discussion.md](thesis-results-discussion.md).
@@ -9,8 +9,8 @@ workspace. The standalone chapter is [thesis-results-discussion.md](thesis-resul
 
 | Component | Contents | Verification |
 |---|---|---|
-| `submission.zip` | Standalone results/discussion chapter, five scientific SVG figures, nine CSV tables, D072 safety erratum, guide and manifest | Every member read back by SHA-256; five SVGs parse; retained scientific table values match frozen sources |
-| `evidence.zip` | All 5,457 frozen evidence files plus their original tree manifest | Source files matched D071 trust anchor; all 5,458 archive members read back by size and SHA-256 |
+| `submission.zip` | Standalone results/discussion chapter, five scientific SVG figures, nine CSV tables, safety-accounting erratum, guide and manifest | Every member read back by SHA-256; five SVGs parse; retained scientific table values match frozen sources |
+| `evidence.zip` | All 5,457 frozen evidence files plus their original tree manifest | Source files matched post-activation evidence trust anchor; all 5,458 archive members read back by size and SHA-256 |
 | `control-backup/control.dump` | PostgreSQL custom-format logical backup of the control database | Restored into a unique temporary database; every row fingerprint matched across 79 tables/48,013 rows; temporary database removed |
 | `source.zip` | Current tracked and nonignored untracked source, migrations, configuration templates, tests, documentation, and `uv.lock` | Per-member SHA-256 manifest and complete archive read-back; captures pending implementation beyond Git HEAD |
 | `release-manifest.json` and receipts | Component hashes, sizes, verification results and scope | Preserve alongside all four components |
@@ -36,7 +36,7 @@ conclusion. Institutional formatting, bibliography linkage and chapter numbering
 remain author-integration tasks.
 
 The packet deliberately replaces the historical report's erroneous safety table
-and caption with the D072 correction. The ambiguous infrastructure-attempt column
+and caption with the safety-accounting correction. The ambiguous infrastructure-attempt column
 is omitted from the method-outcomes presentation; all retained scientific cells
 are unchanged. Five original performance/drift figures are included. The original
 sixth safety figure and frozen source report remain preserved in `evidence.zip`.
@@ -71,7 +71,7 @@ The evidence verification reads about 60 GB. It does not contact PostgreSQL. A
 fresh environment can use `uv sync --extra dev --frozen`; that clean-machine step
 was not executed here. After extraction, the source's
 `scripts/audit_thesis_closeout.py --root <extracted-evidence> --output <new-output>`
-authenticates and regenerates the final historical report and D072 companion.
+authenticates and regenerates the final historical report and safety-accounting companion.
 The standalone chapter and figures can be read directly from the extracted
 submission packet without the control database.
 
@@ -94,5 +94,5 @@ It must not be repointed to an unrelated database.
    the institution-formatted final DOCX/PDF from the actual manuscript.
 
 No further benchmark is required for the currently bounded claims. E remains
-active under D071 authorization; historical benchmark/restore commands are not
+active under explicit activation authorization; historical benchmark/restore commands are not
 part of manuscript integration.

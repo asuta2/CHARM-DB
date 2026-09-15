@@ -1,4 +1,4 @@
-# D072 safety-accounting correction
+# Safety-accounting correction
 
 The frozen final report is retained for provenance. Its safety table incorrectly interprets the stored total attempt count as a retry count (>0 instead of >1). Consequently every slot is labelled retried. The safety figure also sums logical method attributions of shared BO initialization and calls all attempts non-training infrastructure attempts. Do not reproduce that table's retry column or that figure's caption in the thesis.
 

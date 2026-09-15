@@ -1,4 +1,4 @@
-# D072 thesis evidence closeout
+# Thesis evidence closeout
 
 As of 2026-09-14, the narrowed protocol-v2 experiment program and the authorized
 champion deployment are complete. The evidence is sufficient to write the bounded
@@ -26,13 +26,14 @@ completed validly, with two retained infrastructure failures and exact retries.
 
 The tested profile is `scale500-c32-w600-f3-600-v1`: PostgreSQL 18.1, pgbench's
 TPC-B-like workload at scale 500, concurrency 32, four client threads, a 600-second
-warm-up and 600-second F3 measurement, on the recorded 4-CPU/4-GiB container
-context. This is a local research workload, not an official audited TPC result.
-The eight knobs are `shared_buffers`, `effective_cache_size`, `work_mem`,
-`checkpoint_timeout`, `checkpoint_completion_target`, `max_wal_size`,
-`random_page_cost`, and `max_parallel_workers_per_gather`. Durability protections
-are not tuned away. See the [frozen profile](frozen-benchmark-profile.md),
-[methodology](methodology.md), and [protocol decisions](decisions.md).
+warm-up and 600-second F3 measurement, on the recorded 4-CPU/4-GiB container context.
+This is a local research workload, not an official audited TPC result. The eight knobs
+are `shared_buffers`, `effective_cache_size`, `work_mem`, `checkpoint_timeout`,
+`checkpoint_completion_target`, `max_wal_size`, `random_page_cost`, and
+`max_parallel_workers_per_gather`. Durability protections are not tuned away. See the
+[frozen profile](../../../docs/frozen-benchmark-profile.md) and
+[methodology](../../../docs/methodology.md). The decision was to preserve durability
+settings and apply the same validity and safety gates to every method.
 
 The strongest result is reliability of proposed candidate quality. BO candidates
 dominated their same-seed interpolated local default much more frequently than
@@ -61,7 +62,7 @@ The outcome remains `COMPLETE_WITH_DRIFT_FLAGS`. Seed 88408573 exceeded the
 transparency-only TPS drift threshold; seed 740267717 exceeded the p99 drift
 threshold (9.002 ms fitted change). These observations remain included. The
 initial screening block separately failed its original p99 drift gate and was
-used only under the explicit exploratory D035 amendment; no OAT was run.
+used only under the explicit exploratory screening amendment; no OAT was run.
 
 Retrospective multi-fidelity Phase A examined 60/120-second prefixes of all 393
 physical observations in the initial three-seed cohort. Both windows passed the
@@ -72,27 +73,28 @@ runtime-model error was 2.303%. This is a modest single-seed operational result.
 The rejected candidate has no F3 counterfactual, and fixed restoration/restart/
 warm-up costs limit the savings. Adaptive multi-fidelity superiority is not shown.
 
-F4 tested four finalist configurations against default across four common-seed
-blocks (20 observations). All finalists passed the frozen gates. Configuration E
-was selected by the latency-first rule, with mean p99 25.952 ms, mean same-block
-TPS improvement 5.118%, and p99 reduction 3.389 ms. This is a repeated bounded
-configuration recommendation, not a population-superiority or method-family
-ranking. D070 tested exact application and rollback; D071 separately authorized
-persistent activation. D072's live status check found E active, settings verified,
-and the target healthy with no pending restart, active campaign, managed index,
-or CHARM session. No deployment-performance benchmark was added.
+F4 tested four finalist configurations against default across four common-seed blocks
+(20 observations). All finalists passed the frozen gates. Configuration E was selected
+by the latency-first rule, with mean p99 25.952 ms, mean same-block TPS improvement
+5.118%, and p99 reduction 3.389 ms. This is a repeated bounded configuration
+recommendation, not a population-superiority or method-family ranking. The deployment
+decision required exact application and rollback testing before separately authorizing
+persistent activation. The closeout live status check found E active, settings verified,
+and the target healthy with no pending restart, active campaign, managed index, or CHARM
+session. No deployment-performance benchmark was added.
 
 ## Publication correction: retries and shared attempts
 
-D072 discovered that the frozen final safety table uses a total-attempt counter
+The closeout audit found that the frozen final safety table uses a total-attempt counter
 as if it were a retry counter. It therefore marks all slots as retried. Its
 safety figure also sums method attributions of shared BO initialization and
 describes all retained attempts as non-training infrastructure attempts.
 Successful first attempts are included in those totals, so that caption is wrong.
 
-Use the generated [corrected safety table](../../artifacts/reports/d072-closeout/safety-accounting-correction.csv)
-and [erratum with replacement caption](../../artifacts/reports/d072-closeout/safety-accounting-erratum.md)
-when preparing the thesis. The audited physical totals are:
+Use the generated [corrected safety
+table](../../../results/thesis-final/safety-accounting-correction.csv) and [erratum with
+replacement caption](../../../results/thesis-final/safety-accounting-erratum.md) when
+preparing the thesis. The audited physical totals are:
 
 | Quantity | Correct value |
 |---|---:|
@@ -112,39 +114,37 @@ can still contain a semantic reporting defect.
 
 ## Acceptance and exclusions
 
-The current acceptance matrix is in [ACCEPTANCE_CRITERIA.md](../../ACCEPTANCE_CRITERIA.md).
-Detailed stage-level provenance remains in [traceability.md](traceability.md).
-D072 distinguishes scoped evidence completion from the uncompleted legacy platform
-backlog; it does not waive that backlog or rewrite historical failed gates.
+The decision was to close the bounded five-method study using the acceptance
+summary below. Broader platform requirements remain outside that completed scope,
+and failed historical gates retain their original interpretation.
 
 | Requirement group | Closeout disposition | Source |
 |---|---|---|
-| Measurement profile and restoration | Passed for recorded context; duration pilot closed by conservative futility decision, not full planned execution | D013-D027, D040; frozen profile; candidate-restore and duration ledgers |
-| Five methods, five seeds, equal logical budgets | Complete | D036-D069; primary runs/attempts/lineage; final analysis |
-| Screening and learned constraints | Exploratory screening amendment; honest no-learned-constraint fallback | D033/D035/D036; calibration and screening limitations |
-| Secondary multi-fidelity | Complete bounded retrospective/live demonstration | D053/D057; phase-A and phase-B analyses |
-| F4 and recoverable deployment | Complete for E, active by separate authorization | D062/D070/D071; F4 and deployment ledgers |
-| Final report and evidence inventory | Integrity and rerender passed; use safety erratum | D072 audit, corrected safety table and caption |
+| Measurement profile and restoration | Passed for recorded context; duration pilot closed by conservative futility decision, not full planned execution | Frozen profile; candidate-restore, duration and reliability ledgers |
+| Five methods, five seeds, equal logical budgets | Complete | Primary runs, attempts and lineage; final analysis |
+| Screening and learned constraints | Exploratory screening amendment; honest no-learned-constraint fallback | Calibration and screening analysis; exploratory-use decision |
+| Secondary multi-fidelity | Complete bounded retrospective/live demonstration | Phase-A and phase-B analyses |
+| F4 and recoverable deployment | Complete for E, active by separate authorization | F4 and deployment ledgers; explicit activation authorization |
+| Final report and evidence inventory | Integrity and rerender passed; use safety erratum | Closeout audit, corrected safety table and caption |
 | Generality, calibration, coordination, transfer, adaptation | Unsupported by the final v2 comparison | Known limitations; legacy criteria retained |
-| Dedicated 1-hour/24-hour reliability claims | Not established by this closeout | D040 proves 15 consecutive restores; it is not a substitute for either named soak protocol |
+| Dedicated 1-hour/24-hour reliability claims | Not established by this closeout | The reliability validation proves 15 consecutive restores; it is not a substitute for either named soak protocol |
 | Manuscript, literature/novelty sign-off, clean-machine reproduction, archived release | Open submission tasks | Checklist below |
 
 No analytical/read-heavy/hidden workload generalization, learned safety calibration,
-coordinated knob/index advantage, transfer benefit, drift-adaptation effectiveness,
-or ablation conclusion is claimed. The historical 168-arm matrix and twelve
-ablations are not completed by the narrowed v2 comparison. The existing literature
-review is a dated scoped review; this audit adds no new literature search or novelty
-claim. See [scientific positioning](../../docs/scientific-positioning.md) and
-[known limitations](../../KNOWN_LIMITATIONS.md).
+coordinated knob/index advantage, transfer benefit, drift-adaptation effectiveness, or
+ablation conclusion is claimed. The historical 168-arm matrix and twelve ablations are
+not completed by the narrowed v2 comparison. The existing literature review is a dated
+scoped review; this audit adds no new literature search or novelty claim. See the
+current [limitations](../../../docs/limitations.md) for the scope of supported claims.
 
 ## Evidence inventory and reproduction
 
 The authoritative external evidence root is `C:\CHARMDB-ARTIFACTS\v2`. It is not
-included in Git. D072 streamed SHA-256 verification of all 5,457 manifest entries
-(60,121,496,447 bytes), checked for unmanifested files, authenticated the final
-analysis, and rerendered the 17-file final report in the workspace. All nine CSVs
-were populated and all six SVGs parsed. This proves current-host offline report
-reproduction and file integrity, not an independent clean-machine experiment run.
+included in Git. The closeout audit streamed SHA-256 verification of all 5,457 manifest
+entries (60,121,496,447 bytes), checked for unmanifested files, authenticated the final
+analysis, and rerendered the 17-file final report in the workspace. All nine CSVs were
+populated and all six SVGs parsed. This proves current-host offline report reproduction
+and file integrity, not an independent clean-machine experiment run.
 
 | Artifact | Relative path under evidence root | Payload SHA-256 or file SHA as labelled |
 |---|---|---|
@@ -171,27 +171,27 @@ From the repository, with the existing locked environment:
 .venv\Scripts\charmdb.exe v2-apply-best-status --deployment-id c8e561f0-fce1-5c97-b2e8-d3a5bf3d84b2
 ```
 
-The audit requires the exact D071 manifest hash; it fails on altered source files,
-path escapes, unexpected files, or report differences. A copied evidence root may
-be supplied with `--root`; hashing uses relative inventory paths. The script writes
-only to the output directory, outside the source evidence tree, and does not
-connect to PostgreSQL or run a benchmark. The third command is a separate live
-read-only check. Its status is time-dependent and is not proven by an offline ledger.
+The audit requires the exact post-activation evidence manifest hash; it fails on altered
+source files, path escapes, unexpected files, or report differences. A copied evidence
+root may be supplied with `--root`; hashing uses relative inventory paths. The script
+writes only to the output directory, outside the source evidence tree, and does not
+connect to PostgreSQL or run a benchmark. The third command is a separate live read-only
+check. Its status is time-dependent and is not proven by an offline ledger.
 
-To reconstruct a development environment, the repository's frozen dependency
-command is `uv sync --extra dev --frozen`. D072 did not execute this on a clean
-machine. Use [the operator runbook](operator-runbook.md) for historical execution
+To reconstruct a development environment, the repository's frozen dependency command is
+`uv sync --extra dev --frozen`. The closeout did not execute this on a clean machine.
+Use [the operator guide](../../../docs/operator-guide.md) for historical execution
 commands; do not rerun campaign creation, restore, integration tests, or benchmark
 commands on the active target as part of report reproduction.
 
 ## Remaining submission work
 
-1. Integrate the bounded results text, final figures, uncertainty tables, and D072
-   safety correction into the thesis manuscript. Reconcile the thesis title and
+1. Integrate the bounded results text, final figures, uncertainty tables, and the
+   safety-accounting correction into the thesis manuscript. Reconcile the thesis title and
    contribution with the no-learned-constraint result. No manuscript was supplied
    for editing in this milestone.
 2. Finish the author/supervisor review of claims and the dated literature comparison.
-   The P007 register still lacks a verbatim supervisor statement; append it if it
+   The supervision record still lacks a verbatim supervisor statement; retain it if it
    becomes available, without retroactively inventing one.
 3. Create and verify a release/archive containing the exact source working tree,
    locked dependencies, required control-database backup, external raw evidence,
@@ -200,7 +200,7 @@ commands on the active target as part of report reproduction.
    No independent backup/restore or clean-machine reproduction is claimed here.
 4. Regenerate the optional supervisor DOCX after the final prose is settled. The
    authoritative progress record is Markdown; the existing DOCX is not a current
-   D072 submission artifact.
+   closeout submission artifact.
 
 The next milestone is submission packaging and manuscript integration. No additional
 benchmark is required to substantiate the bounded claims above. Broader claims would

@@ -2,7 +2,7 @@
 
 CHARM-DB is a PostgreSQL tuning research system with a durable control database, isolated target, candidate-level restores, five-method primary optimization, secondary multi-fidelity analysis, F4 confirmation, and a recoverable `apply-best` workflow. The thesis implementation in `src/charmdb` is the canonical runtime. Protocol identifiers containing `v2` remain frozen scientific and database contracts.
 
-The recorded five-seed comparison and final report are complete with drift flags. The [frozen report](results/thesis-final/frozen-report/final-five-seed-report.md) is preserved; cite its [D072 safety correction](results/thesis-final/safety-accounting-erratum.md) for retry counts. Champion E was recovery-tested and explicitly activated on the recorded host. These records do not establish clean-machine replication, cross-workload tuning, learned-risk constraints, or index coordination efficacy.
+The recorded five-seed comparison and final report are complete with drift flags. The [frozen report](results/thesis-final/frozen-report/final-five-seed-report.md) is preserved; cite its [safety-accounting correction](results/thesis-final/safety-accounting-erratum.md) for retry counts. Champion E was recovery-tested and explicitly activated on the recorded host. These records do not establish clean-machine replication, cross-workload tuning, learned-risk constraints, or index coordination efficacy.
 
 ## Start here
 

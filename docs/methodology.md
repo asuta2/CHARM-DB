@@ -137,14 +137,14 @@ observations from the same seed and method, plus that seed's shared initial poin
 Default controls, rival-method observations, candidate failures, and infrastructure
 failures never enter training.
 
-The proposed primary drift interpretation uses piecewise-linear interpolation
+The frozen primary drift interpretation uses piecewise-linear interpolation
 of the five within-seed default controls for candidate-relative TPS and p99.
 Least-squares fitted endpoint changes over all valid controls raise visible 5%
 TPS/5 ms p99 flags but do not terminate or delete the 181-hour campaign. Raw and
 adjusted results are both mandatory. Retryable restore/fingerprint failures use
 the same persisted candidate for at most three one-attempt trials and consume no
-new method slot. These policy details remain subject to supervisor
-confirmation; implementation does not authorize primary execution.
+new method slot. The frozen primary manifest records confirmation of these rules
+on 2026-08-21; execution remains gated by the protocol prerequisites.
 
 The pre-launch reliability decision adds a separate `INFRASTRUCTURE` reliability ledger
 before authorization. It requires 15 consecutive logical restore, exact-core

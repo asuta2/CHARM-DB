@@ -4,7 +4,7 @@ As of 2026-09-14, the narrowed protocol-v2 experiment program and the authorized
 champion deployment are complete. The evidence is sufficient to write the bounded
 five-method OLTP comparison, subject to the safety-accounting correction below.
 This is not completion of the original CHARM-DB platform research program or a
-claim that the final thesis manuscript has been submitted or approved.
+claim of independent clean-machine reproduction.
 
 ## Contribution and results text
 
@@ -94,7 +94,7 @@ Successful first attempts are included in those totals, so that caption is wrong
 Use the generated [corrected safety
 table](../../../results/thesis-final/safety-accounting-correction.csv) and [erratum with
 replacement caption](../../../results/thesis-final/safety-accounting-erratum.md) when
-preparing the thesis. The audited physical totals are:
+interpreting the results. The audited physical totals are:
 
 | Quantity | Correct value |
 |---|---:|
@@ -128,7 +128,7 @@ and failed historical gates retain their original interpretation.
 | Final report and evidence inventory | Integrity and rerender passed; use safety erratum | Closeout audit, corrected safety table and caption |
 | Generality, calibration, coordination, transfer, adaptation | Unsupported by the final v2 comparison | Known limitations; legacy criteria retained |
 | Dedicated 1-hour/24-hour reliability claims | Not established by this closeout | The reliability validation proves 15 consecutive restores; it is not a substitute for either named soak protocol |
-| Manuscript, literature/novelty sign-off, clean-machine reproduction, archived release | Open submission tasks | Checklist below |
+| Independent reproduction | Not established by this closeout | Reproducibility guide |
 
 No analytical/read-heavy/hidden workload generalization, learned safety calibration,
 coordinated knob/index advantage, transfer benefit, drift-adaptation effectiveness, or
@@ -167,8 +167,8 @@ From the repository, with the existing locked environment:
 
 ```powershell
 .venv\Scripts\python.exe scripts/audit_thesis_closeout.py --root C:\CHARMDB-ARTIFACTS\v2 --output artifacts/reports/d072-closeout
-.venv\Scripts\python.exe -m pytest tests/unit/v2/test_closeout_audit.py
-.venv\Scripts\charmdb.exe v2-apply-best-status --deployment-id c8e561f0-fce1-5c97-b2e8-d3a5bf3d84b2
+.venv\Scripts\python.exe -m pytest tests/unit/publication/test_closeout_audit.py
+.venv\Scripts\charmdb.exe apply-best-status --deployment-id c8e561f0-fce1-5c97-b2e8-d3a5bf3d84b2
 ```
 
 The audit requires the exact post-activation evidence manifest hash; it fails on altered
@@ -183,25 +183,3 @@ To reconstruct a development environment, the repository's frozen dependency com
 Use [the operator guide](../../../docs/operator-guide.md) for historical execution
 commands; do not rerun campaign creation, restore, integration tests, or benchmark
 commands on the active target as part of report reproduction.
-
-## Remaining submission work
-
-1. Integrate the bounded results text, final figures, uncertainty tables, and the
-   safety-accounting correction into the thesis manuscript. Reconcile the thesis title and
-   contribution with the no-learned-constraint result. No manuscript was supplied
-   for editing in this milestone.
-2. Finish the author/supervisor review of claims and the dated literature comparison.
-   The supervision record still lacks a verbatim supervisor statement; retain it if it
-   becomes available, without retroactively inventing one.
-3. Create and verify a release/archive containing the exact source working tree,
-   locked dependencies, required control-database backup, external raw evidence,
-   manifest and closeout companion. The repo currently has uncommitted and untracked
-   implementation work; HEAD alone does not identify the executed artifact.
-   No independent backup/restore or clean-machine reproduction is claimed here.
-4. Regenerate the optional supervisor DOCX after the final prose is settled. The
-   authoritative progress record is Markdown; the existing DOCX is not a current
-   closeout submission artifact.
-
-The next milestone is submission packaging and manuscript integration. No additional
-benchmark is required to substantiate the bounded claims above. Broader claims would
-require separately designed and executed evidence, not stronger wording.

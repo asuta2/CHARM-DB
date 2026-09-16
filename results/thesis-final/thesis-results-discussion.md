@@ -207,21 +207,17 @@ the lifecycle. These empirical and engineering findings are the supported
 contribution; no new literature-level novelty or universal superiority claim
 is inferred from them.
 
-## Evidence references for manuscript integration
+## Evidence references
 
 - Final analysis payload SHA-256:
   `769f5a0eabdebe272a0a8ae4b7578fd54f72d4a95cd53822e1cb993466a36fb2`.
 - Original final report index file SHA-256:
   `97a37d469ca515a4fb4889f6548c8c42ff33b85b1a41d6504dc2e4b551747fd2`.
-- Statistical tables: `tables/seed-level-statistics.csv`,
-  `tables/pairwise-contrasts.csv`, and `tables/seed-method-outcomes.csv` in the
-  submission package. Performance tables preserve the frozen numeric values.
-- Corrected accounting: `tables/safety-accounting-correction.csv` and
-  `safety-accounting-erratum.md` in the submission package.
-- Frozen profile, methodology, limitations and reproducibility:
-  the source archive's `docs/frozen-benchmark-profile.md`, `docs/methodology.md`,
-  `docs/limitations.md`, and `docs/reproducibility.md`.
-
-This chapter is ready for author integration into the main manuscript. Chapter
-numbering, institutional formatting and bibliography cross-references belong
-to that manuscript; none was available in the repository at packaging time.
+- Statistical tables: [seed-level statistics](frozen-report/tables/seed-level-statistics.csv),
+  [pairwise contrasts](frozen-report/tables/pairwise-contrasts.csv), and
+  [seed-method outcomes](frozen-report/tables/seed-method-outcomes.csv).
+- Corrected accounting: [safety table](safety-accounting-correction.csv) and
+  [erratum](safety-accounting-erratum.md).
+- [Frozen profile](../../docs/frozen-benchmark-profile.md),
+  [methodology](../../docs/methodology.md), [limitations](../../docs/limitations.md),
+  and [reproducibility](../../docs/reproducibility.md).

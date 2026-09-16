@@ -1,7 +1,7 @@
 .PHONY: install up down seed-scale10 smoke lint typecheck unit-test integration-test build manifest-validate frozen-input-check import-check primary-final-report apply-best-status
 
 install:
-	uv sync --extra dev --extra docs --frozen
+	uv sync --extra dev --frozen
 
 up:
 	docker compose up -d --wait

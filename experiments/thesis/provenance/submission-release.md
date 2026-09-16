@@ -1,9 +1,9 @@
 # Local submission release
 
-The release packages the narrowed thesis results for author integration and preserves the
-current source, full external evidence and a verified control-database backup.
+The recorded release preserves the bounded study results, source snapshot, full
+external evidence and a verified control-database backup.
 The release directory is `C:\CHARMDB-RELEASES\d073`, outside the OneDrive source
-workspace. The standalone chapter is [thesis-results-discussion.md](thesis-results-discussion.md).
+workspace. The standalone chapter is [results and discussion](../../../results/thesis-final/thesis-results-discussion.md).
 
 ## Deliverables
 
@@ -19,28 +19,21 @@ Source packaging excludes `.git`, local credentials, hidden tool state, dependen
 caches and external/generated artifacts. The external evidence and submission
 artifacts are included in their own archives. Environment credentials and PostgreSQL
 global roles/ownership/ACLs are not a shareable reproduction dependency and are not
-bundled. The control dump is local research state; no release was uploaded, emailed,
-published, committed, tagged or sent to a supervisor.
+bundled. The control dump is local research state. These receipts establish local archive
+verification, not publication or off-host storage.
 
 This is a verified local archive on the same physical disk. It is not an off-host
 backup or an independent clean-machine experiment reproduction. A distinct copy
 and independent environment remain separate completion criteria.
 
-## Manuscript packet
-
-No complete thesis manuscript or institutional template was available in the
-repository. The new chapter supplies the experiment scope, final five-seed
-results, uncertainty and drift interpretation, retrospective/live multi-fidelity,
-corrected physical retry accounting, F4/deployment evidence, limitations and bounded
-conclusion. Institutional formatting, bibliography linkage and chapter numbering
-remain author-integration tasks.
+## Results packet
 
 The packet deliberately replaces the historical report's erroneous safety table
 and caption with the safety-accounting correction. The ambiguous infrastructure-attempt column
 is omitted from the method-outcomes presentation; all retained scientific cells
 are unchanged. Five original performance/drift figures are included. The original
 sixth safety figure and frozen source report remain preserved in `evidence.zip`.
-They should not be reintroduced into the manuscript without the documented correction.
+Interpret the original safety display together with the documented correction.
 
 ## Control backup evidence
 
@@ -75,24 +68,9 @@ authenticates and regenerates the final historical report and safety-accounting 
 The standalone chapter and figures can be read directly from the extracted
 submission packet without the control database.
 
-The release builders used are `scripts/build_thesis_submission.py`,
-`scripts/package_thesis_release.py`, and `scripts/backup_thesis_control.py`.
+Archive packaging and backup verification tools are
+`scripts/package_thesis_release.py` and `scripts/backup_thesis_control.py`.
 Builders require fresh output paths and refuse to write into their input trees.
 The database script connects only to the configured local control server, creates
 a unique verification database, compares data, and removes only that database.
 It must not be repointed to an unrelated database.
-
-## Remaining author and release actions
-
-1. Integrate the chapter and corrected displays into the actual thesis manuscript,
-   applying institutional requirements and the final bibliography.
-2. Complete author/supervisor claims and dated-literature review; no new novelty
-   claim or supervisor approval was inferred during packaging.
-3. Copy this local release to an independent storage destination and verify the
-   component hashes there. No remote destination was supplied or publication requested.
-4. If required, demonstrate report reproduction in a clean environment and generate
-   the institution-formatted final DOCX/PDF from the actual manuscript.
-
-No further benchmark is required for the currently bounded claims. E remains
-active under explicit activation authorization; historical benchmark/restore commands are not
-part of manuscript integration.

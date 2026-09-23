@@ -132,6 +132,22 @@ _TABLE_EXPORTS = {
            ORDER BY r.f4_block_id,r.physical_position,a.attempt_number""",
         "Append-only F4 attempt and infrastructure-retry ledger",
     ),
+    "h25-blocks.json": (
+        """SELECT * FROM charm_control.experiment_v2_h25_blocks
+           ORDER BY created_at,h25_block_id""",
+        "Supplemental H25 heuristic-baseline block, F4 lineage, and terminal analysis ledger",
+    ),
+    "h25-runs.json": (
+        """SELECT * FROM charm_control.experiment_v2_h25_runs
+           ORDER BY h25_block_id,physical_position""",
+        "Immutable H25 default/heuristic common-seed block schedule",
+    ),
+    "h25-attempts.json": (
+        """SELECT a.* FROM charm_control.experiment_v2_h25_attempts a
+           JOIN charm_control.experiment_v2_h25_runs r USING(h25_run_id)
+           ORDER BY r.h25_block_id,r.physical_position,a.attempt_number""",
+        "Append-only H25 attempt and infrastructure-retry ledger",
+    ),
     "apply-best-deployments.json": (
         """SELECT * FROM charm_control.experiment_v2_apply_best_deployments
            ORDER BY created_at,deployment_id""",

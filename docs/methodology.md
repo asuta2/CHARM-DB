@@ -20,7 +20,8 @@ Every v2 run is assigned exactly one persisted role:
 - `CALIBRATION`: workload, warm-up, duration, and screening decisions.
 - `HISTORICAL_DIAGNOSTIC`: old-machine evidence, never pooled with v2 results.
 - `PRIMARY`: frozen five-method comparison only.
-- `SECONDARY`: retrospective or approved live multi-fidelity evidence.
+- `SECONDARY`: retrospective or approved live multi-fidelity evidence, and the
+  supplemental H25 heuristic-baseline block.
 - `F4_CONFIRMATION`: repeated validation of finalists.
 
 Primary evidence is permitted only after the benchmark profile and restore
@@ -152,3 +153,29 @@ fingerprint, physical- statistics fingerprint, pinned-image, and Docker-init pas
 under the same configured non-OneDrive artifact root that Wave A will use. A failure
 terminates that soak attempt and remains visible; it cannot be averaged away. The soak
 is not optimizer training, candidate budget, calibration, or PRIMARY evidence.
+
+## Supplemental H25 heuristic baseline
+
+The frozen PostgreSQL default keeps `shared_buffers` at 128 MiB on a 4 GiB container,
+which is not a setting an operator would leave in place. The supplemental H25 block
+answers how much of the champion's same-block gain a five-minute heuristic recovers:
+it changes only `shared_buffers` to 131072 pages (1 GiB, 25% of container memory) and
+leaves the other seven knobs at their frozen defaults. The design reuses the F4 block
+protocol on the four F4 seeds. Each restored common-seed block holds three observations:
+H25, the frozen DEFAULT at the center position exactly as in F4, and the F4 champion E
+measured contemporaneously as a trial arm, with the outer order counterbalanced so H25
+and E each occupy the first and third positions twice. Restore, restart, warm-up,
+measurement, retry, and hard-gate rules are unchanged from F4. Because the candidate
+restore fingerprint requires the frozen preflight default settings on the live target,
+the block runs only after the champion deployment has been rolled back; the runner
+refuses to create a slot while the target differs from those settings.
+
+The analysis reports the same-block H25-minus-DEFAULT and E-minus-DEFAULT contrasts
+with descriptive bootstrap intervals, the per-block share (H25 minus DEFAULT) divided by
+(E minus DEFAULT) for TPS and p99, the ratio of block means, and the direct H25-minus-E
+contrast. The earlier F4 observations on the same seeds are reported only as
+non-contemporaneous context. A first two-arm block without the champion arm was
+abandoned after one infrastructure failure and no valid observation; its ledger rows are
+retained and the three-arm block records which block it supersedes. H25 is `SECONDARY`
+evidence: it changes neither the F4 champion selection nor the apply-best decision, and
+four blocks support no formal superiority claim.

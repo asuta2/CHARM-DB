@@ -20,7 +20,7 @@ CONFIG_DIR = ROOT / "experiments" / "thesis" / "manifests"
 class ProtocolManifestTests(unittest.TestCase):
     def test_all_committed_manifests_validate(self) -> None:
         manifests = validate_manifest_directory(CONFIG_DIR)
-        self.assertEqual(len(manifests), 15)
+        self.assertEqual(len(manifests), 16)
         statuses = {item.stage: item.status for item in manifests}
         self.assertEqual(statuses["new-machine-bootstrap"], "ready")
         self.assertEqual(statuses["candidate-restore-pilot"], "ready")
@@ -40,6 +40,7 @@ class ProtocolManifestTests(unittest.TestCase):
         self.assertEqual(statuses["f4-confirmation"], "ready")
         self.assertEqual(statuses["primary-wave-b"], "ready")
         self.assertEqual(statuses["apply-best"], "blocked")
+        self.assertEqual(statuses["h25-heuristic-baseline"], "ready")
         self.assertTrue(
             all(
                 status == "draft"
@@ -61,6 +62,7 @@ class ProtocolManifestTests(unittest.TestCase):
                     "f4-confirmation",
                     "primary-wave-b",
                     "apply-best",
+                    "h25-heuristic-baseline",
                 }
             )
         )

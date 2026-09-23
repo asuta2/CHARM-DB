@@ -7,6 +7,7 @@ from charmdb.cli_commands import evidence as evidence
 from charmdb.cli_commands import multifidelity as multifidelity
 from charmdb.cli_commands import primary as primary
 from charmdb.cli_commands import runtime as runtime
+from charmdb.cli_commands import supplemental as supplemental
 
 __all__ = ["app"]
 

@@ -1,0 +1,184 @@
+{
+  "protocol_id": "thesis-protocol-v2",
+  "schema_version": 1,
+  "stage": "h25-heuristic-baseline",
+  "status": "ready",
+  "evidence_role": "SECONDARY",
+  "operator_triggered": true,
+  "execution_ready": true,
+  "artifact_root": "artifacts-newpc/v2/h25-heuristic-baseline",
+  "candidate_restore_gate": "required",
+  "prerequisites": {
+    "f4_terminal_analysis_complete": true,
+    "champion_deployment_rolled_back_before_execution": true,
+    "durable_h25_runner_implemented": true,
+    "result_blind_h25_analysis_implemented": true
+  },
+  "question": {
+    "origin": "examiner-question-on-default-baseline-realism",
+    "statement": "How much of champion E's same-block gain over the frozen PostgreSQL default is recovered by changing only shared_buffers to 25 percent of the 4 GiB container?",
+    "claim_type": "descriptive-supplement",
+    "changes_champion_selection": false,
+    "changes_apply_best_state": false
+  },
+  "source_evidence": {
+    "f4_manifest_path": "v2/config/f4-confirmation.json",
+    "f4_manifest_sha256": "a24596995869e20234a4254a7910efaa289b198d9bb7ca7ae17dec3f76c8fc20",
+    "f4_campaign_id": "2dafef4e-5990-40cc-ad34-a4b180f888c4",
+    "f4_block_id": "3ac34d27-7223-5ecf-b4b2-8fec54aec690",
+    "f4_analysis_sha256": "00d67d24e07670a0d8cb11e754854189f99afb28f78ed240f2ab01b9b8b3230c",
+    "f4_required_decision": "CONFIRMED_CHAMPION",
+    "f4_champion_treatment": "E",
+    "champion_source_primary_run_id": "e6d70fab-0c90-5795-96a1-5021bff1194c",
+    "default_configuration_source": "v2/config/primary-comparison.json#postgresql_default_configuration",
+    "champion_configuration_source": "v2/config/f4-confirmation.json#finalists[label=E].requested_configuration",
+    "seeds_reused_from": "v2/config/f4-confirmation.json#recommended_design.schedule",
+    "f4_context_is_contemporaneous": false
+  },
+  "treatments": {
+    "DEFAULT": {
+      "description": "frozen PostgreSQL default eight-knob vector at the center position of every block",
+      "requested_configuration": {
+        "shared_buffers": "16384",
+        "effective_cache_size": "524288",
+        "work_mem": "4096",
+        "checkpoint_timeout": "300",
+        "checkpoint_completion_target": "0.9",
+        "max_wal_size": "1024",
+        "random_page_cost": "4",
+        "max_parallel_workers_per_gather": "2"
+      }
+    },
+    "H25": {
+      "description": "frozen default with shared_buffers raised to 1 GiB (25 percent of the 4 GiB container)",
+      "changed_knob": "shared_buffers",
+      "changed_value": "131072",
+      "changed_value_unit": "8kB-pages",
+      "changed_value_bytes": 1073741824,
+      "container_memory_bytes": 4294967296,
+      "fraction_of_container_memory": 0.25,
+      "within_frozen_bounds": [16384, 183500],
+      "requested_configuration": {
+        "shared_buffers": "131072",
+        "effective_cache_size": "524288",
+        "work_mem": "4096",
+        "checkpoint_timeout": "300",
+        "checkpoint_completion_target": "0.9",
+        "max_wal_size": "1024",
+        "random_page_cost": "4",
+        "max_parallel_workers_per_gather": "2"
+      }
+    },
+    "E": {
+      "description": "F4 confirmed champion E, measured contemporaneously as a trial arm",
+      "f4_label": "E",
+      "source_primary_run_id": "e6d70fab-0c90-5795-96a1-5021bff1194c",
+      "requested_configuration": {
+        "checkpoint_completion_target": "0.936696",
+        "checkpoint_timeout": "1430",
+        "effective_cache_size": "465506",
+        "max_parallel_workers_per_gather": "3",
+        "max_wal_size": "633",
+        "random_page_cost": "3.655316",
+        "shared_buffers": "182848",
+        "work_mem": "18022"
+      }
+    }
+  },
+  "design": {
+    "design_kind": "three-arm-heuristic-default-champion",
+    "physical_observations": 12,
+    "blocks": 4,
+    "observations_per_block": 3,
+    "same_workload_seed_within_block": true,
+    "default_at_center_position": true,
+    "within_block_order": "counterbalanced-outer-positions-ABBA",
+    "supersedes": {
+      "design_kind": "two-arm-default-versus-heuristic",
+      "manifest_sha256": "d39d19f661898dabaf3eccd76588b6c01492d6b8cc74d46e49b08a033b30b856",
+      "reason": "abandoned after one infrastructure failure with no valid observation; the two-arm design measured no contemporaneous champion"
+    },
+    "infrastructure_retry_policy": {
+      "maximum_trials_per_slot": 3,
+      "retryable_failure_types": ["DATASET_RESTORE_FAILED", "BASELINE_FINGERPRINT_FAILED"],
+      "candidate_and_seed_reused_on_retry": true,
+      "candidate_budget_consumed_by_retry": false,
+      "candidate_or_benchmark_failure_is_terminal": true,
+      "on_exhaustion": "pause-preserve-ledger-require-human-decision"
+    },
+    "schedule": [
+      {"block": 1, "seed": 1076286005, "order": ["H25", "DEFAULT", "E"]},
+      {"block": 2, "seed": 1762147992, "order": ["E", "DEFAULT", "H25"]},
+      {"block": 3, "seed": 398860006, "order": ["E", "DEFAULT", "H25"]},
+      {"block": 4, "seed": 2004491857, "order": ["H25", "DEFAULT", "E"]}
+    ]
+  },
+  "benchmark_profile": {
+    "profile_id": "scale500-c32-w600-h25-600-v1",
+    "scale_factor": 500,
+    "warmup_seconds": 600,
+    "measurement_seconds": 600,
+    "concurrency": 32,
+    "client_threads": 4,
+    "restore_mechanism": "logical-restore",
+    "candidate_restore_before_every_physical_observation": true,
+    "unconditional_restart_before_every_physical_observation": true,
+    "pgbench_maintenance_policy": "canonical-baseline-only-no-vacuum"
+  },
+  "validity_and_analysis": {
+    "independent_unit": "restored-block-with-common-workload-seed",
+    "primary_contrast": "h25-minus-same-block-default",
+    "champion_contrast": "champion-minus-same-block-default",
+    "share_of_champion_gain": "per-block (H25 minus DEFAULT) divided by (E minus DEFAULT) for TPS percent and p99 ms, plus the ratio of block means",
+    "direct_contrast": "h25-minus-same-block-champion",
+    "hard_gate": "all-twelve-observations-valid-zero-transaction-failures-and-both-restore-fingerprints-passed",
+    "context_contrasts": [
+      "f4-reference-non-contemporaneous: same-block champion gain in this block versus the F4 mean same-block gain of champion E",
+      "same-seed-non-contemporaneous: DEFAULT and E raw values in this block versus the F4 same-seed DEFAULT and E observations"
+    ],
+    "report": [
+      "raw-and-control-relative-TPS-and-p99-per-block-for-H25-and-E",
+      "per-block-share-of-champion-gain",
+      "mean-median-standard-deviation-and-median-absolute-deviation",
+      "descriptive-whole-block-bootstrap-intervals",
+      "failure-retry-restore-drift-and-wall-clock-accounting"
+    ],
+    "decision_values": ["H25_MEASURED", "H25_INCOMPLETE"],
+    "no_formal_superiority_claim_at_four_blocks": true,
+    "f4_context_flagged_non_contemporaneous": true
+  },
+  "live_target_precondition": {
+    "canonical_preflight_settings_must_be_live": true,
+    "apply_best_deployment_status_must_not_be": ["ACTIVE", "ACTIVATING", "RECOVERY_TESTING", "ROLLING_BACK"],
+    "active_champion_blocks_candidate_restore_fingerprint": true,
+    "per_trial_rollback_restores_pre_trial_snapshot": true,
+    "post_run_audit_command": "apply-best-status"
+  },
+  "runtime": {
+    "f4_mean_observation_lifecycle_seconds": 1651.7,
+    "projected_hours_before_retries_or_operator_gaps": 5.51,
+    "agent_must_not_launch_benchmark": true,
+    "long_run_is_external_operator_boundary": true
+  },
+  "separate_decisions": {
+    "champion_selection": "unchanged-by-this-manifest",
+    "apply_best": "unchanged-by-this-manifest"
+  },
+  "implementation": {
+    "schema_migration": "046_v2_h25_three_arm",
+    "extends_schema_migration": "045_v2_h25_heuristic_baseline",
+    "module": "charmdb.campaigns.h25",
+    "commands": [
+      "h25-validate",
+      "h25-create",
+      "h25-run-next",
+      "h25-run",
+      "h25-history",
+      "h25-analyze",
+      "h25-export",
+      "h25-report",
+      "h25-abandon"
+    ]
+  },
+  "unresolved_decisions": []
+}
